@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import { verifyJwt } from './jwt.js';
+import { verifyJwt } from './jwt';
+import { prisma } from './prisma';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-
-const prisma = new PrismaClient();
 
 export async function authenticate(
   request: FastifyRequest,

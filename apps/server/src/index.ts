@@ -1,42 +1,42 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { PrismaClient } from '@prisma/client';
 import { Server } from 'socket.io';
-import { createServer } from 'http';
-import { registerSocketServer } from './socket/index.js';
-import { authRoutes } from './routes/auth.js';
-import { userRoutes } from './routes/users.js';
-import { chatRoutes } from './routes/chats.js';
-
-const prisma = new PrismaClient();
+import { prisma } from './lib/prisma';
+import { registerSocketServer } from './socket/index';
+import { authRoutes } from './routes/auth';
+import { userRoutes } from './routes/users';
+import { chatRoutes } from './routes/chats';
 
 async function bootstrap() {
-  const app = Fastify({ logger: true });
-  const httpServer = createServer(app.server as any);
+  const app = Fastify({
+    logger: {
+      level: process.env.NODE_ENV === 'production' ? 'warn' : 'info',
+    },
+  });
 
-  // ── Plugins ────────────────────────────────────────────────────────────────
+  // ── Plugins ─────────────────────────────────────────────────────────────────
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, {
-    origin: process.env.FRONTEND_URL || '*',
+    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : true,
     credentials: true,
   });
 
-  // ── Decorate with prisma ───────────────────────────────────────────────────
-  app.decorate('prisma', prisma);
-
-  // ── Routes ─────────────────────────────────────────────────────────────────
+  // ── Routes ──────────────────────────────────────────────────────────────────
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(userRoutes, { prefix: '/api/users' });
   await app.register(chatRoutes, { prefix: '/api/chats' });
 
-  // ── Health check ───────────────────────────────────────────────────────────
+  // ── Health check ────────────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
-  // ── Socket.IO ──────────────────────────────────────────────────────────────
-  const io = new Server(httpServer, {
+  // Must call ready() before accessing app.server
+  await app.ready();
+
+  // ── Socket.IO — attaches to Fastify's internal HTTP server ─────────────────
+  const io = new Server(app.server, {
     cors: {
-      origin: process.env.FRONTEND_URL || '*',
+      origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : '*',
       credentials: true,
     },
     transports: ['websocket', 'polling'],
@@ -44,17 +44,14 @@ async function bootstrap() {
 
   registerSocketServer(io, prisma);
 
-  // ── Start ──────────────────────────────────────────────────────────────────
+  // ── Start ───────────────────────────────────────────────────────────────────
   const port = parseInt(process.env.PORT || '3001', 10);
+  await app.listen({ port, host: '0.0.0.0' });
+  console.log(`🚀 SLEEK server running on port ${port}`);
 
-  // We use httpServer (not app.listen) so Socket.IO shares the same port
-  await app.ready();
-  httpServer.listen(port, '0.0.0.0', () => {
-    console.log(`🚀 SLEEK server running on port ${port}`);
-  });
-
-  // ── Graceful shutdown ──────────────────────────────────────────────────────
+  // ── Graceful shutdown ───────────────────────────────────────────────────────
   const shutdown = async () => {
+    await app.close();
     await prisma.$disconnect();
     process.exit(0);
   };
