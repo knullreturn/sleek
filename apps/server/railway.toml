@@ -6,5 +6,3 @@ buildCommand = "npm install -g pnpm@9 && cd ../.. && pnpm install --no-frozen-lo
 startCommand = "node dist/index.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
-restartPolicyType = "on-failure"
-restartPolicyMaxRetries = 10
