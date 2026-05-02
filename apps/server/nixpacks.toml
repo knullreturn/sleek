@@ -8,4 +8,4 @@ cmds = ["pnpm install --ignore-workspace --no-frozen-lockfile"]
 cmds = ["npx prisma generate", "npx tsc"]
 
 [start]
-cmd = "npx prisma db push --accept-data-loss && node dist/index.js"
+cmd = "node dist/index.js"
