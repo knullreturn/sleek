@@ -5,7 +5,8 @@ import { useChatStore } from '../store/chat.store';
 import { getSocket } from './useSocket';
 
 export function useChats() {
-  const { setChats } = useChatStore();
+  // Use selector to get only what we need — avoids subscribing to entire store
+  const setChats = useChatStore((s) => s.setChats);
 
   const query = useQuery({
     queryKey: ['chats'],
@@ -17,13 +18,13 @@ export function useChats() {
 
   useEffect(() => {
     if (query.data) setChats(query.data);
-  }, [query.data]);
+  }, [query.data, setChats]);
 
   return query;
 }
 
 export function useMessages(chatId: string | null) {
-  const { setMessages } = useChatStore();
+  const setMessages = useChatStore((s) => s.setMessages);
 
   const query = useQuery({
     queryKey: ['messages', chatId],
@@ -37,7 +38,7 @@ export function useMessages(chatId: string | null) {
 
   useEffect(() => {
     if (query.data && chatId) setMessages(chatId, query.data);
-  }, [query.data, chatId]);
+  }, [query.data, chatId, setMessages]);
 
   const sendMessage = useCallback(
     (content: string, replyToId?: string) => {

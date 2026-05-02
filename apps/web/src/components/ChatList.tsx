@@ -4,13 +4,18 @@ import { formatChatTime, getDmPeer } from '../lib/utils';
 import { useChatStore } from '../store/chat.store';
 import { useAuthStore } from '../store/auth.store';
 import { useChats } from '../hooks/useData';
-import { Search, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useUIStore } from '../store/ui.store';
 
 export function ChatList() {
   const user = useAuthStore((s) => s.user);
-  const { chats, activeChatId, setActiveChatId, onlineUsers } = useChatStore();
+  // Proper selectors — only re-render when specific slice changes
+  const chats = useChatStore((s) => s.chats);
+  const activeChatId = useChatStore((s) => s.activeChatId);
+  const setActiveChatId = useChatStore((s) => s.setActiveChatId);
+  const onlineUsers = useChatStore((s) => s.onlineUsers);
   const setSearchOpen = useUIStore((s) => s.setSearchOpen);
+
   useChats(); // triggers fetch + sync
 
   return (
@@ -49,7 +54,6 @@ export function ChatList() {
             fontFamily: 'inherit',
           }}
         >
-          <Search size={14} />
           Find or start a conversation
         </button>
       </div>
@@ -80,7 +84,7 @@ export function ChatList() {
         {chats.map((chat) => {
           const peer = getDmPeer(chat, user?.id || '');
           const isActive = chat.id === activeChatId;
-          const isOnline = peer && onlineUsers.has(peer.id);
+          const isOnline = peer ? onlineUsers.has(peer.id) : false;
           const lastMsg = chat.lastMessage;
 
           return (

@@ -8,6 +8,10 @@ import { useMessages } from '../hooks/useData';
 import { getSocket } from '../hooks/useSocket';
 import { Send, Paperclip, Smile } from 'lucide-react';
 
+// Stable references — prevent new array on every render (causes infinite loop)
+const EMPTY_MESSAGES: any[] = [];
+const EMPTY_TYPING: any[] = [];
+
 interface MessageBubbleProps {
   message: any;
   isOwn: boolean;
@@ -54,8 +58,8 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
 
 export function ChatWindow({ chatId }: { chatId: string }) {
   const user = useAuthStore((s) => s.user);
-  const messages = useChatStore((s) => s.messages[chatId] || []);
-  const typingMap = useChatStore((s) => s.typing[chatId] || []);
+  const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
+  const typingMap = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
   const { sendMessage, sendTyping } = useMessages(chatId);
 
   const [input, setInput] = useState('');
