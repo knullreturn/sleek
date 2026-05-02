@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --ignore-workspace --no-frozen-lockfile"]
+
+[phases.build]
+cmds = ["npx prisma generate", "npx tsc"]
+
+[start]
+cmd = "node dist/index.js"

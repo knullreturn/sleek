@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install -g pnpm@9 && cd ../.. && pnpm install --no-frozen-lockfile && cd apps/server && npx prisma generate && npx tsc"
+buildCommand = "npx prisma generate && npx tsc"
 
 [deploy]
 startCommand = "node dist/index.js"

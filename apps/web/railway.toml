@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm install -g pnpm@9 && cd ../.. && pnpm install --no-frozen-lockfile && cd apps/web && pnpm build"
+buildCommand = "npm run build"
 
 [deploy]
 startCommand = "npx serve -s dist -l $PORT"
