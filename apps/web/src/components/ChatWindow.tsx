@@ -49,11 +49,14 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
           <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
           <span
             style={{
-              display: 'block',
-              textAlign: 'right',
+              float: 'right',
               fontSize: 10,
-              marginTop: 4,
               opacity: 0.55,
+              marginLeft: 8,
+              marginTop: 4,
+              position: 'relative',
+              top: 3,
+              whiteSpace: 'nowrap',
               letterSpacing: 0.2,
             }}
           >
