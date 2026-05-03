@@ -27,41 +27,44 @@ export function ChatPage() {
 
   return (
     <div className="app-layout">
-      {/* Single top header — logo + peer info when active */}
+      {/* Single top header — grid-aligned with body panels */}
       <header className="app-header" role="banner">
-        <div className="app-logo">
-          <div className="app-logo-mark" aria-hidden>S</div>
-          <span className="app-logo-name">SLEEK</span>
+        {/* Left cell — aligns with sidebar + chatlist */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="app-logo">
+            <div className="app-logo-mark" aria-hidden>S</div>
+            <span className="app-logo-name">SLEEK</span>
+          </div>
         </div>
 
-        {peer ? (
-          <>
-            <div style={{ width: 1, height: 22, background: 'var(--border)', margin: '0 14px' }} aria-hidden />
-            <Avatar src={peer.avatarUrl} username={peer.username} size="sm" online={isOnline} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                {peer.username}
+        {/* Right cell — aligns with chat area */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          {peer ? (
+            <>
+              <Avatar src={peer.avatarUrl} username={peer.username} size="sm" online={isOnline} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  {peer.username}
+                </div>
+                <div style={{ fontSize: 11, color: isOnline ? 'var(--online)' : 'var(--text-muted)', lineHeight: 1 }}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </div>
               </div>
-              <div style={{ fontSize: 11, color: isOnline ? 'var(--online)' : 'var(--text-muted)', lineHeight: 1 }}>
-                {isOnline ? 'Online' : 'Offline'}
-              </div>
-            </div>
-            <button
-              id="header-search-btn"
-              className="icon-btn"
-              onClick={() => setSearchOpen(true)}
-              title="New chat"
-              aria-label="New chat"
-            >
-              <Search size={16} />
-            </button>
-            <button className="icon-btn" title="More" aria-label="More options">
-              <MoreHorizontal size={16} />
-            </button>
-          </>
-        ) : (
-          <div style={{ flex: 1 }} />
-        )}
+              <button
+                id="header-search-btn"
+                className="icon-btn"
+                onClick={() => setSearchOpen(true)}
+                title="New chat"
+                aria-label="New chat"
+              >
+                <Search size={16} />
+              </button>
+              <button className="icon-btn" title="More" aria-label="More options">
+                <MoreHorizontal size={16} />
+              </button>
+            </>
+          ) : null}
+        </div>
       </header>
 
       <div className="app-body">

@@ -122,13 +122,25 @@ textarea {
   min-height: var(--header-height);
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
-  display: flex;
+  display: grid;
+  grid-template-columns: calc(var(--sidebar-width) + var(--chatlist-width)) 1fr;
   align-items: center;
-  padding: 0 16px;
-  gap: 12px;
+  padding: 0 16px 0 0;
   z-index: 50;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+.app-header > div:first-child {
+  padding-left: 16px;
+  border-right: 1px solid var(--border-subtle);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.app-header > div:last-child {
+  padding: 0 12px;
 }
 
 .app-body {
