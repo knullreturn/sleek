@@ -28,6 +28,6 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => set({ token: null, user: null }),
       isAuthenticated: () => !!get().token && !!get().user,
     }),
-    { name: 'sleek-auth' }
+    { name: 'sleek-auth-v2' }   // v2 forces everyone to re-login after schema change
   )
 );
