@@ -33,7 +33,11 @@ export function ChatPage() {
         {/* Left cell — logo + toggle button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="app-logo">
-            <div className="app-logo-mark" aria-hidden>S</div>
+            <img
+              src="/sleek_logo.png"
+              alt="SLEEK"
+              style={{ width: 28, height: 28, objectFit: 'contain' }}
+            />
             <span className="app-logo-name">SLEEK</span>
           </div>
           <button

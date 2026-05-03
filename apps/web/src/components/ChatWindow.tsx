@@ -21,7 +21,7 @@ interface MessageBubbleProps {
 
 function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubbleProps) {
   return (
-    <div className={`msg-row ${isOwn ? 'own' : ''} animate-slide-up`}>
+    <div className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
         <div style={{ width: 32, flexShrink: 0 }}>
           {showAvatar && (

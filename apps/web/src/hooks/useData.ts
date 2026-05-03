@@ -34,6 +34,8 @@ export function useMessages(chatId: string | null) {
       return res.data.messages as any[];
     },
     enabled: !!chatId,
+    staleTime: Infinity,   // socket handles real-time — never auto-refetch
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
