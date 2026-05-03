@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuthStore } from '../store/auth.store';
 import { Avatar } from './Avatar';
-import { LogOut, X, Settings } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 
 interface ProfileModalProps {
   onClose: () => void;
@@ -62,9 +62,6 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
               {user?.handle}
             </div>
           </div>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
-            <X size={16} />
-          </button>
         </div>
 
         {/* Actions */}

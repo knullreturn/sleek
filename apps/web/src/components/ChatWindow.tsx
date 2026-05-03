@@ -46,10 +46,19 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
           </div>
         )}
         <div className={`msg-bubble ${isOwn ? 'own' : 'other'}`}>
-          {message.content}
-        </div>
-        <div className="msg-meta">
-          <span className="msg-time">{formatMessageTime(message.createdAt)}</span>
+          <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
+          <span
+            style={{
+              display: 'block',
+              textAlign: 'right',
+              fontSize: 10,
+              marginTop: 4,
+              opacity: 0.55,
+              letterSpacing: 0.2,
+            }}
+          >
+            {formatMessageTime(message.createdAt)}
+          </span>
         </div>
       </div>
     </div>
