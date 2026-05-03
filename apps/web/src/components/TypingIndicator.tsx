@@ -1,23 +1,39 @@
 import React from 'react';
 
-export function TypingIndicator({ names }: { names: string[] }) {
-  if (names.length === 0) return <div className="typing-indicator" />;
+interface TypingIndicatorProps {
+  names: string[];
+  avatarUrl?: string;
+}
 
-  const label =
-    names.length === 1
-      ? `${names[0]} is typing`
-      : names.length === 2
-      ? `${names[0]} and ${names[1]} are typing`
-      : 'Several people are typing';
+export function TypingIndicator({ names, avatarUrl }: TypingIndicatorProps) {
+  if (names.length === 0) return null;
 
   return (
-    <div className="typing-indicator animate-fade-in">
-      <div className="typing-dots" aria-hidden>
-        <span className="typing-dot" />
-        <span className="typing-dot" />
-        <span className="typing-dot" />
+    <div className="typing-message-row">
+      {/* Avatar */}
+      <div
+        className="avatar avatar-sm"
+        style={{
+          background: 'linear-gradient(135deg, #8b5cf6, #4c1d95)',
+          boxShadow: '0 0 10px rgba(139,92,246,0.4)',
+          flexShrink: 0,
+        }}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+        ) : null}
       </div>
-      <span>{label}</span>
+
+      {/* Bubble with mini keyboard */}
+      <div className="typing-bubble">
+        <div className="mini-keyboard">
+          <div className="m-key delay-1" />
+          <div className="m-key delay-2" />
+          <div className="m-key delay-3" />
+          <div className="m-key delay-4" />
+          <div className="m-key delay-5" />
+        </div>
+      </div>
     </div>
   );
 }

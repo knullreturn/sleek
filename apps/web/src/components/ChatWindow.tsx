@@ -196,6 +196,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
           </React.Fragment>
         ))}
 
+        {/* Typing indicator — shown as a message in chat area */}
+        {typingNames.length > 0 && (
+          <TypingIndicator names={typingNames} />
+        )}
+
         <div ref={bottomRef} />
       </div>
 
@@ -233,11 +238,6 @@ export function ChatWindow({ chatId }: { chatId: string }) {
         </button>
       </div>
 
-      {typingNames.length > 0 && (
-        <div style={{ padding: '0 20px 8px', background: 'var(--bg-surface)' }}>
-          <TypingIndicator names={typingNames} />
-        </div>
-      )}
     </>
   );
 }
