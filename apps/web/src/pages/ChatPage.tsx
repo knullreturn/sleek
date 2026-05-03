@@ -9,14 +9,16 @@ import { useAuthStore } from '../store/auth.store';
 import { useUIStore } from '../store/ui.store';
 import { useSocket } from '../hooks/useSocket';
 import { getDmPeer } from '../lib/utils';
-import { MessageSquare, Search, MoreHorizontal } from 'lucide-react';
+import { MessageSquare, Search, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 export function ChatPage() {
   const activeChatId = useChatStore((s) => s.activeChatId);
   const chats = useChatStore((s) => s.chats);
   const onlineUsers = useChatStore((s) => s.onlineUsers);
   const searchOpen = useUIStore((s) => s.searchOpen);
+  const chatListOpen = useUIStore((s) => s.chatListOpen);
   const setSearchOpen = useUIStore((s) => s.setSearchOpen);
+  const toggleChatList = useUIStore((s) => s.toggleChatList);
   const user = useAuthStore((s) => s.user);
 
   const activeChat = chats.find((c) => c.id === activeChatId);
@@ -27,17 +29,26 @@ export function ChatPage() {
 
   return (
     <div className="app-layout">
-      {/* Single top header — grid-aligned with body panels */}
       <header className="app-header" role="banner">
-        {/* Left cell — aligns with sidebar + chatlist */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        {/* Left cell — logo + toggle button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="app-logo">
             <div className="app-logo-mark" aria-hidden>S</div>
             <span className="app-logo-name">SLEEK</span>
           </div>
+          <button
+            id="toggle-chatlist-btn"
+            className="icon-btn"
+            onClick={toggleChatList}
+            title={chatListOpen ? 'Hide sidebar' : 'Show sidebar'}
+            aria-label={chatListOpen ? 'Hide sidebar' : 'Show sidebar'}
+            style={{ marginLeft: 4 }}
+          >
+            {chatListOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
+          </button>
         </div>
 
-        {/* Right cell — aligns with chat area */}
+        {/* Right cell — peer info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           {peer ? (
             <>
@@ -69,9 +80,20 @@ export function ChatPage() {
 
       <div className="app-body">
         <Sidebar />
-        <ChatList />
 
-        {/* Chat area — no sub-header */}
+        {/* Chat list — collapsible */}
+        <div
+          className="chat-list-panel"
+          style={{
+            width: chatListOpen ? 'var(--chatlist-width)' : 0,
+            minWidth: chatListOpen ? 'var(--chatlist-width)' : 0,
+            overflow: 'hidden',
+            transition: 'width 220ms cubic-bezier(0.4,0,0.2,1), min-width 220ms cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
+          {chatListOpen && <ChatList />}
+        </div>
+
         <main className="chat-main" role="main">
           {activeChatId ? (
             <ChatWindow chatId={activeChatId} />

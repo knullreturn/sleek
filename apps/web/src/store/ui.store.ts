@@ -4,15 +4,18 @@ interface UIState {
   theme: 'dark' | 'light';
   searchOpen: boolean;
   sidebarView: 'chats' | 'settings';
+  chatListOpen: boolean;
   toggleTheme: () => void;
   setSearchOpen: (open: boolean) => void;
   setSidebarView: (view: 'chats' | 'settings') => void;
+  toggleChatList: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
   theme: 'dark',
   searchOpen: false,
   sidebarView: 'chats',
+  chatListOpen: true,
 
   toggleTheme: () =>
     set((state) => {
@@ -23,4 +26,5 @@ export const useUIStore = create<UIState>((set) => ({
 
   setSearchOpen: (open) => set({ searchOpen: open }),
   setSidebarView: (view) => set({ sidebarView: view }),
+  toggleChatList: () => set((state) => ({ chatListOpen: !state.chatListOpen })),
 }));
