@@ -97,6 +97,15 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius-full); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* Force textarea reset — Tailwind v4 base can undo these */
+textarea {
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 /* ── Selection ─────────────────────────────────────────────────────────────── */
 ::selection { background: var(--accent-dim); color: var(--text-primary); }
 

@@ -33,7 +33,7 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
           )}
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', gap: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start', gap: 2, flex: 1, minWidth: 0 }}>
         {showSender && !isOwn && (
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
