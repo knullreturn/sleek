@@ -3,12 +3,12 @@ import { MessageSquare, Sun, Moon } from 'lucide-react';
 import { useUIStore } from '../store/ui.store';
 import { useAuthStore } from '../store/auth.store';
 import { Avatar } from './Avatar';
-import { ProfileModal } from './ProfileModal';
+import { SettingsPage } from './SettingsPage';
 
 export function Sidebar() {
   const { theme, toggleTheme, sidebarView, setSidebarView } = useUIStore();
   const user = useAuthStore((s) => s.user);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <>
@@ -41,23 +41,23 @@ export function Sidebar() {
           <span className="tooltip">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
 
-        {/* Profile avatar — opens modal */}
+        {/* Avatar — opens Settings */}
         {user && (
           <button
             id="profile-btn"
             className="sidebar-btn"
-            onClick={() => setProfileOpen(true)}
-            aria-label="Profile"
-            title="Profile"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
             style={{ padding: 0, width: 44, height: 44 }}
           >
             <Avatar src={user.avatarUrl} username={user.username ?? ''} size="sm" />
-            <span className="tooltip">Profile</span>
+            <span className="tooltip">Settings</span>
           </button>
         )}
       </nav>
 
-      {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
+      {settingsOpen && <SettingsPage onClose={() => setSettingsOpen(false)} />}
     </>
   );
 }
