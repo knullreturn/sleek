@@ -14,16 +14,16 @@ const EMPTY_MESSAGES: any[] = [];
 const EMPTY_TYPING: any[] = [];
 
 interface MessageBubbleProps {
-  message:       any;
-  isOwn:         boolean;
-  showAvatar:    boolean;
-  showSender:    boolean;
-  replyTo:       any | null;
-  isEditing:     boolean;
+  message: any;
+  isOwn: boolean;
+  showAvatar: boolean;
+  showSender: boolean;
+  replyTo: any | null;
+  isEditing: boolean;
   onContextMenu: (e: React.MouseEvent, message: any) => void;
-  onScrollTo:    (id: string) => void;
-  onEditSave:    (newContent: string) => void;
-  onEditCancel:  () => void;
+  onScrollTo: (id: string) => void;
+  onEditSave: (newContent: string) => void;
+  onEditCancel: () => void;
 }
 
 // Inline edit textarea — autofocuses, auto-resizes, Enter saves, Escape cancels
@@ -107,18 +107,23 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEdit
         )}
         {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} onScrollTo={onScrollTo} />}
 
-        {isEditing ? (
+        {message.deletedAt ? (
+          // Soft-deleted: show grey tombstone bubble, no interactions
+          <div className={`msg-bubble ${isOwn ? 'own' : 'other'} msg-bubble-deleted`}>
+            <span className="msg-deleted-text">This message was deleted</span>
+            <span style={{ float: 'right', fontSize: 10, opacity: 0.4, marginLeft: 8, marginTop: 4, position: 'relative', top: 3 }}>
+              {formatMessageTime(message.createdAt)}
+            </span>
+          </div>
+        ) : isEditing ? (
           <EditInput initial={message.content} onSave={onEditSave} onCancel={onEditCancel} />
         ) : (
           <div
             className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
             onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
           >
-            {/* Pin badge */}
             {message.pinned && (
-              <span className="msg-pin-badge" title="Pinned message">
-                <Pin size={10} />
-              </span>
+              <span className="msg-pin-badge" title="Pinned message"><Pin size={10} /></span>
             )}
             <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
             <span style={{ float: 'right', fontSize: 10, opacity: 0.55, marginLeft: 8, marginTop: 4, position: 'relative', top: 3, whiteSpace: 'nowrap', letterSpacing: 0.2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -138,12 +143,14 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEdit
 function ReplyChip({
   replyTo, isOwn, onScrollTo,
 }: { replyTo: any; isOwn: boolean; onScrollTo: (id: string) => void }) {
+  const isDeleted = !!replyTo.deletedAt;
   return (
     <div className={`reply-chip-wrap ${isOwn ? 'own' : ''}`}>
       <button
         className="reply-chip"
-        onClick={() => onScrollTo(replyTo.id)}
-        title="Jump to original message"
+        onClick={() => !isDeleted && onScrollTo(replyTo.id)}
+        title={isDeleted ? 'Original message was deleted' : 'Jump to original message'}
+        style={isDeleted ? { cursor: 'default', opacity: 0.5 } : {}}
       >
         <Avatar
           src={replyTo.sender?.avatarUrl}
@@ -186,10 +193,10 @@ function MessageSkeleton({ own, width }: { own?: boolean; width: string }) {
 }
 
 export function ChatWindow({ chatId }: { chatId: string }) {
-  const user     = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
-  const typingMap   = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
-  const chats       = useChatStore((s) => s.chats);
+  const typingMap = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
+  const chats = useChatStore((s) => s.chats);
   const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
 
   const activeChat = chats.find((c) => c.id === chatId);
@@ -199,13 +206,13 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     .filter((t) => t.userId !== user?.id)
     .map((t) => t.username);
 
-  const [input,       setInput]      = useState('');
-  const [replyingTo,  setReplyingTo] = useState<any | null>(null);
-  const [editingId,   setEditingId]  = useState<string | null>(null);
+  const [input, setInput] = useState('');
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bottomRef   = useRef<HTMLDivElement>(null);
-  const canvasRef   = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Join chat room on mount
@@ -231,6 +238,12 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const handlePin = (messageId: string, currentlyPinned: boolean) => {
     const socket = getSocket();
     socket?.emit(currentlyPinned ? 'unpin_message' : 'pin_message', { messageId, chatId });
+  };
+
+  // Soft delete
+  const handleDelete = (messageId: string) => {
+    const socket = getSocket();
+    socket?.emit('delete_message', { messageId, chatId });
   };
 
   // Scroll to original message and flash highlight
@@ -443,6 +456,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
             setContextMenu(null);
           }}
           onPin={() => handlePin(contextMenu!.message.id, !!contextMenu!.message.pinned)}
+          onDelete={() => handleDelete(contextMenu!.message.id)}
         />
       )}
     </>

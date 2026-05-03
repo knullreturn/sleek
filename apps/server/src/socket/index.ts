@@ -19,13 +19,17 @@ function serializeMessage(message: any) {
     sender:          { ...message.sender, handle: message.sender.tag },
     content:         message.content,
     edited:          message.edited,
-    originalContent: message.originalContent ?? null,
+    originalContent: message.originalContent  ?? null,
+    deletedAt:       message.deletedAt        ? message.deletedAt.toISOString() : null,
     pinned:          message.pinned,
-    pinnedAt:        message.pinnedAt ? message.pinnedAt.toISOString() : null,
+    pinnedAt:        message.pinnedAt         ? message.pinnedAt.toISOString()  : null,
+    pinnedById:      message.pinnedById        ?? null,
+    pinnedBy:        message.pinnedBy ? { ...message.pinnedBy, handle: message.pinnedBy.tag } : null,
     replyTo: message.replyTo ? {
-      id:      message.replyTo.id,
-      content: message.replyTo.content,
-      sender:  { ...message.replyTo.sender, handle: message.replyTo.sender.tag },
+      id:        message.replyTo.id,
+      content:   message.replyTo.content,
+      deletedAt: message.replyTo.deletedAt ? message.replyTo.deletedAt.toISOString() : null,
+      sender:    { ...message.replyTo.sender, handle: message.replyTo.sender.tag },
     } : null,
     createdAt: message.createdAt.toISOString(),
     updatedAt: message.updatedAt.toISOString(),
@@ -77,23 +81,30 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
     socket.on('send_message', async (payload: { chatId: string; content: string; replyToId?: string }) => {
       try {
         const { chatId, content, replyToId } = payload;
+        // Fix #6: validate content
         if (!content?.trim()) return;
+        if (content.trim().length > 4000) return socket.emit('error', { message: 'Message too long (max 4000 characters)' });
 
         const member = await prisma.chatMember.findUnique({
           where: { chatId_userId: { chatId, userId: s.userId } },
         });
         if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
 
+        // Fix #7: validate replyToId belongs to same chat
+        if (replyToId) {
+          const replyMsg = await prisma.message.findUnique({ where: { id: replyToId }, select: { chatId: true } });
+          if (!replyMsg || replyMsg.chatId !== chatId) return socket.emit('error', { message: 'Invalid reply target' });
+        }
+
         const message = await prisma.message.create({
           data: { chatId, senderId: s.userId, content: content.trim(), ...(replyToId ? { replyToId } : {}) },
           include: {
-            sender: { select: memberSelect },
+            sender:  { select: memberSelect },
             replyTo: { include: { sender: { select: memberSelect } } },
           },
         });
 
         await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
-
         io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
       } catch (err) {
         console.error('send_message error:', err);
@@ -105,30 +116,62 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
       try {
         const { messageId, chatId, newContent } = payload;
         if (!newContent?.trim()) return;
+        // Fix #6: validate content length
+        if (newContent.trim().length > 4000) return socket.emit('error', { message: 'Message too long (max 4000 characters)' });
 
-        // Fetch existing message to verify ownership and get old content
         const existing = await prisma.message.findUnique({ where: { id: messageId } });
-        if (!existing)        return socket.emit('error', { message: 'Message not found' });
+        if (!existing)                      return socket.emit('error', { message: 'Message not found' });
         if (existing.senderId !== s.userId) return socket.emit('error', { message: 'Not your message' });
+        if (existing.deletedAt)             return socket.emit('error', { message: 'Cannot edit a deleted message' });
 
         const updated = await prisma.message.update({
           where: { id: messageId },
           data: {
-            content: newContent.trim(),
-            edited:  true,
-            // Store original only on first edit — never overwrite
+            content:         newContent.trim(),
+            edited:          true,
             originalContent: existing.originalContent ?? existing.content,
           },
           include: {
-            sender: { select: memberSelect },
+            sender:  { select: memberSelect },
             replyTo: { include: { sender: { select: memberSelect } } },
+            pinnedBy: { select: memberSelect },
           },
         });
-
         io.to(`chat:${chatId}`).emit('message_edited', { message: serializeMessage(updated) });
       } catch (err) {
         console.error('edit_message error:', err);
         socket.emit('error', { message: 'Failed to edit message' });
+      }
+    });
+
+    // Fix #4: Soft delete — only sender can delete; auto-unpins if pinned
+    socket.on('delete_message', async (payload: { messageId: string; chatId: string }) => {
+      try {
+        const { messageId, chatId } = payload;
+        const existing = await prisma.message.findUnique({ where: { id: messageId } });
+        if (!existing)                      return socket.emit('error', { message: 'Message not found' });
+        if (existing.senderId !== s.userId) return socket.emit('error', { message: 'Not your message' });
+        if (existing.deletedAt)             return; // already deleted
+
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: {
+            deletedAt:  new Date(),
+            // Auto-unpin on delete — a deleted pinned message is meaningless
+            pinned:     false,
+            pinnedAt:   null,
+            pinnedById: null,
+          },
+          include: {
+            sender:   { select: memberSelect },
+            replyTo:  { include: { sender: { select: memberSelect } } },
+            pinnedBy: { select: memberSelect },
+          },
+        });
+        io.to(`chat:${chatId}`).emit('message_deleted', { message: serializeMessage(updated) });
+      } catch (err) {
+        console.error('delete_message error:', err);
+        socket.emit('error', { message: 'Failed to delete message' });
       }
     });
 
@@ -142,10 +185,11 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
 
         const updated = await prisma.message.update({
           where: { id: messageId },
-          data:  { pinned: true, pinnedAt: new Date() },
+          data:  { pinned: true, pinnedAt: new Date(), pinnedById: s.userId },
           include: {
-            sender: { select: memberSelect },
-            replyTo: { include: { sender: { select: memberSelect } } },
+            sender:   { select: memberSelect },
+            replyTo:  { include: { sender: { select: memberSelect } } },
+            pinnedBy: { select: memberSelect },
           },
         });
         io.to(`chat:${chatId}`).emit('message_pinned', { message: serializeMessage(updated) });
@@ -165,10 +209,11 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
 
         const updated = await prisma.message.update({
           where: { id: messageId },
-          data:  { pinned: false, pinnedAt: null },
+          data:  { pinned: false, pinnedAt: null, pinnedById: null },
           include: {
-            sender: { select: memberSelect },
-            replyTo: { include: { sender: { select: memberSelect } } },
+            sender:   { select: memberSelect },
+            replyTo:  { include: { sender: { select: memberSelect } } },
+            pinnedBy: { select: memberSelect },
           },
         });
         io.to(`chat:${chatId}`).emit('message_unpinned', { message: serializeMessage(updated) });

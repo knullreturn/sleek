@@ -1322,3 +1322,25 @@ button.reply-chip:active { transform: scale(0.97); }
 
 /* Pin badge color on own (purple) bubble */
 .msg-bubble.own .msg-pin-badge { color: rgba(255,255,255,0.75); }
+
+/* -- Deleted message bubble --------------------------------------------------- */
+.msg-bubble-deleted {
+  background: transparent !important;
+  border: 1px dashed var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+.msg-bubble.own.msg-bubble-deleted { background: transparent !important; }
+.msg-deleted-text {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Pinned panel: pinned-by credit */
+.pinned-card-pinby {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+.pinned-card-pinby strong { color: var(--text-secondary); }

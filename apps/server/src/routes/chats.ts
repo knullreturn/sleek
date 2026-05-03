@@ -16,12 +16,18 @@ function serializeMessage(msg: any) {
     content:         msg.content,
     edited:          msg.edited          ?? false,
     originalContent: msg.originalContent ?? null,
-    pinned:          msg.pinned           ?? false,
-    pinnedAt:        msg.pinnedAt         ? msg.pinnedAt.toISOString() : null,
-    replyToId:       msg.replyToId        ?? null,
-    replyTo: msg.replyTo
-      ? { id: msg.replyTo.id, content: msg.replyTo.content, sender: fmtUser(msg.replyTo.sender) }
-      : null,
+    deletedAt:       msg.deletedAt       ? msg.deletedAt.toISOString()  : null,
+    pinned:          msg.pinned          ?? false,
+    pinnedAt:        msg.pinnedAt        ? msg.pinnedAt.toISOString()   : null,
+    pinnedById:      msg.pinnedById      ?? null,
+    pinnedBy:        msg.pinnedBy        ? fmtUser(msg.pinnedBy) : null,
+    replyToId:       msg.replyToId       ?? null,
+    replyTo: msg.replyTo ? {
+      id:        msg.replyTo.id,
+      content:   msg.replyTo.content,
+      deletedAt: msg.replyTo.deletedAt ? msg.replyTo.deletedAt.toISOString() : null,
+      sender:    fmtUser(msg.replyTo.sender),
+    } : null,
     createdAt: msg.createdAt.toISOString(),
     updatedAt: msg.updatedAt.toISOString(),
   };
@@ -112,8 +118,12 @@ export async function chatRoutes(app: FastifyInstance) {
     if (!member) return reply.status(403).send({ error: 'Forbidden', message: 'Not a member', statusCode: 403 });
 
     const messages = await prisma.message.findMany({
-      where: { chatId: id, ...(query.cursor ? { createdAt: { lt: new Date(query.cursor) } } : {}) },
-      include: { sender: { select: memberSelect }, replyTo: { include: { sender: { select: memberSelect } } } },
+      where:   { chatId: id, ...(query.cursor ? { createdAt: { lt: new Date(query.cursor) } } : {}) },
+      include: {
+        sender:   { select: memberSelect },
+        replyTo:  { include: { sender: { select: memberSelect } } },
+        pinnedBy: { select: memberSelect },
+      },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
     });
@@ -138,8 +148,12 @@ export async function chatRoutes(app: FastifyInstance) {
     if (!member) return reply.status(403).send({ error: 'Forbidden', statusCode: 403 });
 
     const pinned = await prisma.message.findMany({
-      where:   { chatId: id, pinned: true },
-      include: { sender: { select: memberSelect }, replyTo: { include: { sender: { select: memberSelect } } } },
+      where:   { chatId: id, pinned: true, deletedAt: null },  // exclude soft-deleted
+      include: {
+        sender:   { select: memberSelect },
+        replyTo:  { include: { sender: { select: memberSelect } } },
+        pinnedBy: { select: memberSelect },
+      },
       orderBy: { pinnedAt: 'desc' },
     });
 

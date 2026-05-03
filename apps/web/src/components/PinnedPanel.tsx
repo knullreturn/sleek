@@ -103,6 +103,11 @@ export function PinnedPanel({ chatId, onClose, onJump }: PinnedPanelProps) {
                 <span className="pinned-card-name">{pin.sender?.username}</span>
                 <span className="pinned-card-time">{formatMessageTime(pin.createdAt)}</span>
               </div>
+              {pin.pinnedBy && (
+                <div className="pinned-card-pinby">
+                  📌 Pinned by <strong>{pin.pinnedBy.username}</strong>
+                </div>
+              )}
 
               {/* Content */}
               <p className="pinned-card-content">{pin.content}</p>

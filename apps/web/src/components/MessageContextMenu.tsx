@@ -12,6 +12,7 @@ interface MessageContextMenuProps {
   onReply:  () => void;
   onEdit:   () => void;
   onPin:    () => void;
+  onDelete: () => void;
 }
 
 const BASE_ITEMS = [
@@ -22,7 +23,7 @@ const BASE_ITEMS = [
   { id: 'delete', label: 'Delete', icon: Trash2, ownOnly: true,  danger: true  },
 ];
 
-export function MessageContextMenu({ x, y, isOwn, isPinned, content, onClose, onReply, onEdit, onPin }: MessageContextMenuProps) {
+export function MessageContextMenu({ x, y, isOwn, isPinned, content, onClose, onReply, onEdit, onPin, onDelete }: MessageContextMenuProps) {
   const menuRef       = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -67,11 +68,11 @@ export function MessageContextMenu({ x, y, isOwn, isPinned, content, onClose, on
   };
 
   const handleAction = (id: string) => {
-    if (id === 'copy')  { handleCopy();  return; }
-    if (id === 'reply') { onReply(); onClose(); return; }
-    if (id === 'edit')  { onEdit();  onClose(); return; }
-    if (id === 'pin')   { onPin();   onClose(); return; }
-    // delete — wired later
+    if (id === 'copy')   { handleCopy();  return; }
+    if (id === 'reply')  { onReply();  onClose(); return; }
+    if (id === 'edit')   { onEdit();   onClose(); return; }
+    if (id === 'pin')    { onPin();    onClose(); return; }
+    if (id === 'delete') { onDelete(); onClose(); return; }
     onClose();
   };
 

@@ -13,22 +13,24 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   googleId  String   @unique
-  username  String?                      // null until onboarding complete
-  tag       String   @unique             // 7-char globally unique ID: 6 digits + 1 capital letter (e.g. 483921A)
+  username  String?  @unique             // Fix #1: unique once set, null is allowed multiple times in Postgres
+  tag       String   @unique             // 7-char globally unique ID
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sentMessages  Message[]    @relation("MessageSender")
-  chatMembers   ChatMember[]
+  sentMessages   Message[]  @relation("MessageSender")
+  pinnedMessages Message[]  @relation("MessagePinner")   // Fix #3: who pinned
+  chatMembers    ChatMember[]
 
-  @@index([username])
   @@index([googleId])
 }
 
 model Chat {
   id        String     @id @default(cuid())
   type      ChatType   @default(DM)
+  name      String?                      // Fix #5: for GROUP chats
+  avatarUrl String?                      // Fix #5: for GROUP chats
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
@@ -52,22 +54,36 @@ model Message {
   id              String    @id @default(cuid())
   chat            Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId          String
-  sender          User      @relation("MessageSender", fields: [senderId], references: [id])
+
+  // Fix #2: Restrict prevents user deletion while they have messages
+  sender          User      @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
   senderId        String
+
   content         String
   edited          Boolean   @default(false)
   originalContent String?
+
+  // Fix #4: Soft delete — null means active, set to delete timestamp when "deleted"
+  deletedAt       DateTime?
+
   pinned          Boolean   @default(false)
   pinnedAt        DateTime?
+
+  // Fix #3: Track who pinned the message
+  pinnedBy        User?     @relation("MessagePinner", fields: [pinnedById], references: [id], onDelete: SetNull)
+  pinnedById      String?
+
   replyToId       String?
   replyTo         Message?  @relation("MessageReply", fields: [replyToId], references: [id])
   replies         Message[] @relation("MessageReply")
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([chatId, createdAt])
   @@index([senderId])
   @@index([chatId, pinned])
+  @@index([chatId, deletedAt])  // Fix #4: fast soft-delete filter
 }
 
 enum ChatType {

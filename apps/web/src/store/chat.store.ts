@@ -16,8 +16,11 @@ interface Message {
   content:         string;
   edited:          boolean;
   originalContent: string | null;
+  deletedAt:       string | null;
   pinned:          boolean;
   pinnedAt:        string | null;
+  pinnedById:      string | null;
+  pinnedBy:        any | null;
   createdAt:       string;
   updatedAt:       string;
   replyTo?:        any;

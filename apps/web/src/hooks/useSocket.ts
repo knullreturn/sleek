@@ -45,11 +45,15 @@ export function useSocket() {
     });
 
     socket.on('message_pinned', ({ message }: { message: any }) => {
-      updateMessage(message.chatId, { id: message.id, pinned: true,  pinnedAt: message.pinnedAt });
+      updateMessage(message.chatId, { id: message.id, pinned: true, pinnedAt: message.pinnedAt, pinnedBy: message.pinnedBy, pinnedById: message.pinnedById });
     });
 
     socket.on('message_unpinned', ({ message }: { message: any }) => {
-      updateMessage(message.chatId, { id: message.id, pinned: false, pinnedAt: null });
+      updateMessage(message.chatId, { id: message.id, pinned: false, pinnedAt: null, pinnedBy: null, pinnedById: null });
+    });
+
+    socket.on('message_deleted', ({ message }: { message: any }) => {
+      updateMessage(message.chatId, { id: message.id, deletedAt: message.deletedAt, pinned: false, pinnedAt: null, pinnedBy: null });
     });
 
     socket.on('typing', (payload: { chatId: string; userId: string; username: string; isTyping: boolean }) => {
