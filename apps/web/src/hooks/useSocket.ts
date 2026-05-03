@@ -7,7 +7,7 @@ let socket: Socket | null = null;
 
 export function useSocket() {
   const token = useAuthStore((s) => s.token);
-  const { addMessage, setTyping, setUserOnline, activeChatId } = useChatStore();
+  const { addMessage, updateMessage, setTyping, setUserOnline, activeChatId } = useChatStore();
   const activeChatRef = useRef(activeChatId);
   activeChatRef.current = activeChatId;
 
@@ -32,6 +32,16 @@ export function useSocket() {
 
     socket.on('receive_message', ({ message }: { message: any }) => {
       addMessage(message);
+    });
+
+    socket.on('message_edited', ({ message }: { message: any }) => {
+      updateMessage(message.chatId, {
+        id:              message.id,
+        content:         message.content,
+        edited:          message.edited,
+        originalContent: message.originalContent,
+        updatedAt:       message.updatedAt,
+      });
     });
 
     socket.on('typing', (payload: { chatId: string; userId: string; username: string; isTyping: boolean }) => {

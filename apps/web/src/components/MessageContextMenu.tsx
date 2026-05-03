@@ -9,6 +9,7 @@ interface MessageContextMenuProps {
   content:  string;
   onClose:  () => void;
   onReply:  () => void;
+  onEdit:   () => void;
 }
 
 const BASE_ITEMS = [
@@ -19,7 +20,7 @@ const BASE_ITEMS = [
   { id: 'delete', label: 'Delete', icon: Trash2, ownOnly: true,  danger: true  },
 ];
 
-export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply }: MessageContextMenuProps) {
+export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply, onEdit }: MessageContextMenuProps) {
   const menuRef       = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -66,7 +67,8 @@ export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply }: M
   const handleAction = (id: string) => {
     if (id === 'copy')  { handleCopy();  return; }
     if (id === 'reply') { onReply(); onClose(); return; }
-    // edit / pin / delete — wired later
+    if (id === 'edit')  { onEdit();  onClose(); return; }
+    // pin / delete — wired later
     onClose();
   };
 

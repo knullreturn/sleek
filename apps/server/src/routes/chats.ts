@@ -9,12 +9,14 @@ const fmtUser = (u: any) => ({ ...u, handle: u.tag });  // handle is just the 7-
 
 function serializeMessage(msg: any) {
   return {
-    id: msg.id,
-    chatId: msg.chatId,
-    senderId: msg.senderId,
-    sender: fmtUser(msg.sender),
-    content: msg.content,
-    replyToId: msg.replyToId ?? null,
+    id:              msg.id,
+    chatId:          msg.chatId,
+    senderId:        msg.senderId,
+    sender:          fmtUser(msg.sender),
+    content:         msg.content,
+    edited:          msg.edited          ?? false,
+    originalContent: msg.originalContent ?? null,
+    replyToId:       msg.replyToId       ?? null,
     replyTo: msg.replyTo
       ? { id: msg.replyTo.id, content: msg.replyTo.content, sender: fmtUser(msg.replyTo.sender) }
       : null,

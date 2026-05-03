@@ -9,7 +9,27 @@ interface AuthSocket extends Socket {
 }
 
 const memberSelect = { id: true, username: true, tag: true, avatarUrl: true };
-const onlineUsers = new Map<string, Set<string>>();
+const onlineUsers  = new Map<string, Set<string>>();
+
+function serializeMessage(message: any) {
+  return {
+    id:              message.id,
+    chatId:          message.chatId,
+    senderId:        message.senderId,
+    sender:          { ...message.sender, handle: message.sender.tag },
+    content:         message.content,
+    edited:          message.edited,
+    originalContent: message.originalContent ?? null,
+    replyTo: message.replyTo ? {
+      id:      message.replyTo.id,
+      content: message.replyTo.content,
+      sender:  { ...message.replyTo.sender, handle: message.replyTo.sender.tag },
+    } : null,
+    createdAt: message.createdAt.toISOString(),
+    updatedAt: message.updatedAt.toISOString(),
+  };
+}
+
 
 export function registerSocketServer(io: Server, prisma: PrismaClient) {
   // ── JWT Auth middleware ────────────────────────────────────────────────────
@@ -72,22 +92,41 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
 
         await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
 
-        const serialized = {
-          id: message.id, chatId: message.chatId, senderId: message.senderId,
-          sender: { ...message.sender, handle: message.sender.tag },
-          content: message.content,
-          replyTo: message.replyTo ? {
-            id: message.replyTo.id, content: message.replyTo.content,
-            sender: { ...message.replyTo.sender, handle: message.replyTo.sender.tag },
-          } : null,
-          createdAt: message.createdAt.toISOString(),
-          updatedAt: message.updatedAt.toISOString(),
-        };
-
-        io.to(`chat:${chatId}`).emit('receive_message', { message: serialized });
+        io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
       } catch (err) {
         console.error('send_message error:', err);
         socket.emit('error', { message: 'Failed to send message' });
+      }
+    });
+
+    socket.on('edit_message', async (payload: { messageId: string; chatId: string; newContent: string }) => {
+      try {
+        const { messageId, chatId, newContent } = payload;
+        if (!newContent?.trim()) return;
+
+        // Fetch existing message to verify ownership and get old content
+        const existing = await prisma.message.findUnique({ where: { id: messageId } });
+        if (!existing)        return socket.emit('error', { message: 'Message not found' });
+        if (existing.senderId !== s.userId) return socket.emit('error', { message: 'Not your message' });
+
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: {
+            content: newContent.trim(),
+            edited:  true,
+            // Store original only on first edit — never overwrite
+            originalContent: existing.originalContent ?? existing.content,
+          },
+          include: {
+            sender: { select: memberSelect },
+            replyTo: { include: { sender: { select: memberSelect } } },
+          },
+        });
+
+        io.to(`chat:${chatId}`).emit('message_edited', { message: serializeMessage(updated) });
+      } catch (err) {
+        console.error('edit_message error:', err);
+        socket.emit('error', { message: 'Failed to edit message' });
       }
     });
 

@@ -49,17 +49,19 @@ model ChatMember {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  chatId    String
-  sender    User     @relation("MessageSender", fields: [senderId], references: [id])
-  senderId  String
-  content   String
-  replyToId String?
-  replyTo   Message? @relation("MessageReply", fields: [replyToId], references: [id])
-  replies   Message[] @relation("MessageReply")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  chat            Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId          String
+  sender          User     @relation("MessageSender", fields: [senderId], references: [id])
+  senderId        String
+  content         String
+  edited          Boolean  @default(false)
+  originalContent String?
+  replyToId       String?
+  replyTo         Message? @relation("MessageReply", fields: [replyToId], references: [id])
+  replies         Message[] @relation("MessageReply")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([chatId, createdAt])
   @@index([senderId])

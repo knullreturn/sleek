@@ -9,14 +9,16 @@ interface Chat {
 }
 
 interface Message {
-  id: string;
-  chatId: string;
-  senderId: string;
-  sender: any;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  replyTo?: any;
+  id:              string;
+  chatId:          string;
+  senderId:        string;
+  sender:          any;
+  content:         string;
+  edited:          boolean;
+  originalContent: string | null;
+  createdAt:       string;
+  updatedAt:       string;
+  replyTo?:        any;
 }
 
 interface TypingState {
@@ -30,14 +32,15 @@ interface ChatState {
   typing: TypingState;
   onlineUsers: Set<string>;
 
-  setChats: (chats: Chat[]) => void;
-  upsertChat: (chat: Chat) => void;
-  setActiveChatId: (id: string | null) => void;
-  setMessages: (chatId: string, messages: Message[]) => void;
-  prependMessages: (chatId: string, messages: Message[]) => void;
-  addMessage: (message: Message) => void;
-  setTyping: (chatId: string, userId: string, username: string, isTyping: boolean) => void;
-  setUserOnline: (userId: string, online: boolean) => void;
+  setChats:       (chats: Chat[]) => void;
+  upsertChat:     (chat: Chat) => void;
+  setActiveChatId:(id: string | null) => void;
+  setMessages:    (chatId: string, messages: Message[]) => void;
+  prependMessages:(chatId: string, messages: Message[]) => void;
+  addMessage:     (message: Message) => void;
+  updateMessage:  (chatId: string, patch: Partial<Message> & { id: string }) => void;
+  setTyping:      (chatId: string, userId: string, username: string, isTyping: boolean) => void;
+  setUserOnline:  (userId: string, online: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -93,6 +96,18 @@ export const useChatStore = create<ChatState>((set) => ({
       return {
         messages: { ...state.messages, [message.chatId]: [...existing, message] },
         chats,
+      };
+    }),
+
+  updateMessage: (chatId, patch) =>
+    set((state) => {
+      const msgs = state.messages[chatId];
+      if (!msgs) return state;
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: msgs.map((m) => m.id === patch.id ? { ...m, ...patch } : m),
+        },
       };
     }),
 

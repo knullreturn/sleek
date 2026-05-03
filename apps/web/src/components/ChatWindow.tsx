@@ -19,21 +19,85 @@ interface MessageBubbleProps {
   showAvatar:    boolean;
   showSender:    boolean;
   replyTo:       any | null;
+  isEditing:     boolean;
   onContextMenu: (e: React.MouseEvent, message: any) => void;
   onScrollTo:    (id: string) => void;
+  onEditSave:    (newContent: string) => void;
+  onEditCancel:  () => void;
 }
 
-function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onContextMenu, onScrollTo }: MessageBubbleProps) {
+// Inline edit textarea — autofocuses, auto-resizes, Enter saves, Escape cancels
+function EditInput({ initial, onSave, onCancel }: { initial: string; onSave: (v: string) => void; onCancel: () => void }) {
+  const [value, setValue] = useState(initial);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.focus();
+    ta.selectionStart = ta.selectionEnd = ta.value.length;
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, []);
+
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (value.trim()) onSave(value.trim()); }
+    if (e.key === 'Escape') onCancel();
+  };
+
+  return (
+    <div className="edit-input-wrap">
+      <textarea
+        ref={taRef}
+        className="edit-textarea"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          e.target.style.height = 'auto';
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
+        onKeyDown={handleKey}
+        rows={1}
+      />
+      <div className="edit-input-hint">Enter to save · Esc to cancel</div>
+    </div>
+  );
+}
+
+// (edited) tag + popover with original message
+function EditedTag({ originalContent }: { originalContent: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <span className="edited-tag-wrap" ref={ref} style={{ position: 'relative' }}>
+      <button className="edited-tag" onClick={() => setOpen((o) => !o)}>edited</button>
+      {open && (
+        <div className="edited-popover">
+          <div className="edited-popover-label">Original message</div>
+          <div className="edited-popover-text">{originalContent}</div>
+        </div>
+      )}
+    </span>
+  );
+}
+
+function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEditing, onContextMenu, onScrollTo, onEditSave, onEditCancel }: MessageBubbleProps) {
   return (
     <div id={`msg-${message.id}`} className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
         <div style={{ width: 32, flexShrink: 0 }}>
           {showAvatar && (
-            <Avatar
-              src={message.sender?.avatarUrl}
-              username={message.sender?.username || '?'}
-              size="sm"
-            />
+            <Avatar src={message.sender?.avatarUrl} username={message.sender?.username || '?'} size="sm" />
           )}
         </div>
       )}
@@ -41,29 +105,24 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onCont
         {showSender && !isOwn && (
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
-        {/* Concept C: floating chip + connector line */}
         {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} onScrollTo={onScrollTo} />}
-        <div
-          className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
-          onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
-        >
-          <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
-          <span
-            style={{
-              float: 'right',
-              fontSize: 10,
-              opacity: 0.55,
-              marginLeft: 8,
-              marginTop: 4,
-              position: 'relative',
-              top: 3,
-              whiteSpace: 'nowrap',
-              letterSpacing: 0.2,
-            }}
+
+        {isEditing ? (
+          <EditInput initial={message.content} onSave={onEditSave} onCancel={onEditCancel} />
+        ) : (
+          <div
+            className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
+            onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
           >
-            {formatMessageTime(message.createdAt)}
-          </span>
-        </div>
+            <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
+            <span style={{ float: 'right', fontSize: 10, opacity: 0.55, marginLeft: 8, marginTop: 4, position: 'relative', top: 3, whiteSpace: 'nowrap', letterSpacing: 0.2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {message.edited && message.originalContent && (
+                <EditedTag originalContent={message.originalContent} />
+              )}
+              {formatMessageTime(message.createdAt)}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -134,8 +193,9 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     .filter((t) => t.userId !== user?.id)
     .map((t) => t.username);
 
-  const [input,      setInput]      = useState('');
-  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [input,       setInput]      = useState('');
+  const [replyingTo,  setReplyingTo] = useState<any | null>(null);
+  const [editingId,   setEditingId]  = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -151,8 +211,15 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   const initialScrollDone = useRef(false);
 
-  // Reset reply + menu when switching chats
-  useEffect(() => { setReplyingTo(null); setContextMenu(null); }, [chatId]);
+  // Reset on chat switch
+  useEffect(() => { setReplyingTo(null); setContextMenu(null); setEditingId(null); }, [chatId]);
+
+  // Save edit — emit to socket, close edit mode
+  const handleEditSave = (messageId: string, newContent: string) => {
+    const socket = getSocket();
+    socket?.emit('edit_message', { messageId, chatId, newContent });
+    setEditingId(null);
+  };
 
   // Scroll to original message and flash highlight
   const scrollToMessage = (id: string) => {
@@ -284,12 +351,15 @@ export function ChatWindow({ chatId }: { chatId: string }) {
                   isOwn={isOwn}
                   showAvatar={showAvatar}
                   showSender={showSender}
+                  isEditing={editingId === msg.id}
                   onContextMenu={(e, msg) => {
                     e.preventDefault();
                     setContextMenu({ x: e.clientX, y: e.clientY, message: msg });
                   }}
                   replyTo={msg.replyTo ?? null}
                   onScrollTo={scrollToMessage}
+                  onEditSave={(newContent) => handleEditSave(msg.id, newContent)}
+                  onEditCancel={() => setEditingId(null)}
                 />
               );
             })}
@@ -354,6 +424,10 @@ export function ChatWindow({ chatId }: { chatId: string }) {
             setReplyingTo(contextMenu!.message);
             setContextMenu(null);
             textareaRef.current?.focus();
+          }}
+          onEdit={() => {
+            setEditingId(contextMenu!.message.id);
+            setContextMenu(null);
           }}
         />
       )}
