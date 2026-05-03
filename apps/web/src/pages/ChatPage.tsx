@@ -30,8 +30,8 @@ export function ChatPage() {
   return (
     <div className="app-layout">
       <header className="app-header" role="banner">
-        {/* Left cell — logo + toggle button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Left cell — logo + toggle button, aligned with sidebar+chatlist */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 'calc(var(--sidebar-width) + var(--chatlist-width))', paddingLeft: 16 }}>
           <div className="app-logo">
             <img
               src="/sleek_logo.png"
