@@ -64,34 +64,33 @@ function EditInput({ initial, onSave, onCancel }: { initial: string; onSave: (v:
   );
 }
 
-// (edited) tag + popover with original message
-function EditedTag({ originalContent }: { originalContent: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
+// (edited) tag — press and hold to peek at original, release to see current
+function EditedTag({
+  onPeekStart, onPeekEnd, peeking,
+}: { onPeekStart: () => void; onPeekEnd: () => void; peeking: boolean }) {
   return (
-    <span className="edited-tag-wrap" ref={ref} style={{ position: 'relative' }}>
-      <button className="edited-tag" onClick={() => setOpen((o) => !o)}>edited</button>
-      {open && (
-        <div className="edited-popover">
-          <div className="edited-popover-label">Original message</div>
-          <div className="edited-popover-text">{originalContent}</div>
-        </div>
-      )}
+    <span className="edited-tag-wrap">
+      <button
+        className={`edited-tag ${peeking ? 'peeking' : ''}`}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onPeekStart(); }}
+        onPointerUp={onPeekEnd}
+        onPointerLeave={onPeekEnd}
+        onPointerCancel={onPeekEnd}
+        title="Hold to see original"
+        // Prevent context menu on long-press mobile
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {peeking ? 'original' : 'edited'}
+      </button>
     </span>
   );
 }
 
 function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEditing, onContextMenu, onScrollTo, onEditSave, onEditCancel }: MessageBubbleProps) {
+  const [peekOriginal, setPeekOriginal] = useState(false);
+  const canPeek      = message.edited && !!message.originalContent;
+  const displayContent = (peekOriginal && canPeek) ? message.originalContent! : message.content;
+
   return (
     <div id={`msg-${message.id}`} className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
@@ -108,9 +107,8 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEdit
         {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} onScrollTo={onScrollTo} />}
 
         {message.deletedAt ? (
-          // Soft-deleted: show grey tombstone bubble, no interactions
           <div className={`msg-bubble ${isOwn ? 'own' : 'other'} msg-bubble-deleted`}>
-            <span className="msg-deleted-text">This message was deleted</span>
+            <span className="msg-deleted-text">🗑 This message was deleted</span>
             <span style={{ float: 'right', fontSize: 10, opacity: 0.4, marginLeft: 8, marginTop: 4, position: 'relative', top: 3 }}>
               {formatMessageTime(message.createdAt)}
             </span>
@@ -119,16 +117,27 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEdit
           <EditInput initial={message.content} onSave={onEditSave} onCancel={onEditCancel} />
         ) : (
           <div
-            className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
+            className={`msg-bubble ${isOwn ? 'own' : 'other'}${peekOriginal ? ' peeking-bubble' : ''}`}
             onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
           >
             {message.pinned && (
               <span className="msg-pin-badge" title="Pinned message"><Pin size={10} /></span>
             )}
-            <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
+            {/* key forces remount → CSS fade triggers on every swap */}
+            <span
+              key={peekOriginal ? 'orig' : 'curr'}
+              className={`msg-content-text ${peekOriginal ? 'content-peek' : 'content-current'}`}
+              style={{ wordBreak: 'break-word', lineHeight: 1.55, display: 'block' }}
+            >
+              {displayContent}
+            </span>
             <span style={{ float: 'right', fontSize: 10, opacity: 0.55, marginLeft: 8, marginTop: 4, position: 'relative', top: 3, whiteSpace: 'nowrap', letterSpacing: 0.2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {message.edited && message.originalContent && (
-                <EditedTag originalContent={message.originalContent} />
+              {canPeek && (
+                <EditedTag
+                  peeking={peekOriginal}
+                  onPeekStart={() => setPeekOriginal(true)}
+                  onPeekEnd={() => setPeekOriginal(false)}
+                />
               )}
               {formatMessageTime(message.createdAt)}
             </span>
