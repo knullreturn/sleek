@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
+import { MessageContextMenu } from './MessageContextMenu';
 import { formatMessageTime, formatDateSeparator, isSameDay, getDmPeer } from '../lib/utils';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
@@ -13,13 +14,14 @@ const EMPTY_MESSAGES: any[] = [];
 const EMPTY_TYPING: any[] = [];
 
 interface MessageBubbleProps {
-  message: any;
-  isOwn: boolean;
-  showAvatar: boolean;
-  showSender: boolean;
+  message:     any;
+  isOwn:       boolean;
+  showAvatar:  boolean;
+  showSender:  boolean;
+  onContextMenu: (e: React.MouseEvent, message: any) => void;
 }
 
-function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, showAvatar, showSender, onContextMenu }: MessageBubbleProps) {
   return (
     <div className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
@@ -37,7 +39,10 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
         {showSender && !isOwn && (
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
-        <div className={`msg-bubble ${isOwn ? 'own' : 'other'}`}>
+        <div
+          className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
+          onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
+        >
           <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
           <span
             style={{
@@ -71,10 +76,10 @@ function MessageSkeleton({ own, width }: { own?: boolean; width: string }) {
 }
 
 export function ChatWindow({ chatId }: { chatId: string }) {
-  const user = useAuthStore((s) => s.user);
+  const user     = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
-  const typingMap = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
-  const chats = useChatStore((s) => s.chats);
+  const typingMap   = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
+  const chats       = useChatStore((s) => s.chats);
   const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
 
   const activeChat = chats.find((c) => c.id === chatId);
@@ -85,11 +90,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     .map((t) => t.username);
 
   const [input, setInput] = useState('');
-  // Fix #3: useRef avoids stale-closure bugs with rapid keypresses
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bottomRef    = useRef<HTMLDivElement>(null);
-  const canvasRef    = useRef<HTMLDivElement>(null);   // for scroll-position check
-  const textareaRef  = useRef<HTMLTextAreaElement>(null);
+  const bottomRef   = useRef<HTMLDivElement>(null);
+  const canvasRef   = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Join chat room on mount
   useEffect(() => {
@@ -223,6 +228,10 @@ export function ChatWindow({ chatId }: { chatId: string }) {
                   isOwn={isOwn}
                   showAvatar={showAvatar}
                   showSender={showSender}
+                  onContextMenu={(e, msg) => {
+                    e.preventDefault();
+                    setContextMenu({ x: e.clientX, y: e.clientY, message: msg });
+                  }}
                 />
               );
             })}
@@ -271,6 +280,14 @@ export function ChatWindow({ chatId }: { chatId: string }) {
         </button>
       </div>
 
+      {contextMenu && (
+        <MessageContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          isOwn={contextMenu.message.senderId === user?.id}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </>
   );
 }
