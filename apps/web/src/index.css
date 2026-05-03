@@ -217,8 +217,8 @@ textarea {
   position: relative;
 }
 .sidebar-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  color: var(--accent);
+  background: var(--accent-dim);
 }
 .sidebar-btn.active {
   color: var(--accent);

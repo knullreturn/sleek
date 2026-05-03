@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Settings, Sun, Moon } from 'lucide-react';
+import { MessageSquare, Sun, Moon } from 'lucide-react';
 import { useUIStore } from '../store/ui.store';
 import { useAuthStore } from '../store/auth.store';
 import { Avatar } from './Avatar';
@@ -13,22 +13,6 @@ export function Sidebar() {
   return (
     <>
       <nav className="sidebar" aria-label="Main navigation">
-        {/* Logo mark */}
-        <div style={{ marginBottom: 8 }}>
-          <div
-            style={{
-              width: 36, height: 36, background: 'var(--accent)',
-              borderRadius: 10, display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontWeight: 800, fontSize: 16,
-              color: '#fff', letterSpacing: '-0.5px',
-            }}
-            aria-hidden
-          >
-            S
-          </div>
-        </div>
-
-        <div className="divider" style={{ width: '60%', margin: '4px 0 8px' }} />
 
         {/* Messages */}
         <button
@@ -40,18 +24,6 @@ export function Sidebar() {
         >
           <MessageSquare size={20} />
           <span className="tooltip">Messages</span>
-        </button>
-
-        {/* Settings */}
-        <button
-          id="sidebar-settings"
-          className={`sidebar-btn ${sidebarView === 'settings' ? 'active' : ''}`}
-          onClick={() => setSidebarView('settings')}
-          aria-label="Settings"
-          title="Settings"
-        >
-          <Settings size={20} />
-          <span className="tooltip">Settings</span>
         </button>
 
         {/* Spacer */}
