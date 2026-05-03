@@ -100,13 +100,13 @@ export function ChatPage() {
       <div className="app-body">
         <Sidebar />
 
-        {/* Chat list — collapsible */}
+        {/* Chat list — collapsible wrapper */}
         <div
-          className="chat-list-panel"
+          className="chat-list-wrapper"
           style={{
-            width: chatListOpen ? 'var(--chatlist-width)' : 0,
-            minWidth: chatListOpen ? 'var(--chatlist-width)' : 0,
-            overflow: 'hidden',
+            width:     chatListOpen ? 'var(--chatlist-width)' : 0,
+            minWidth:  chatListOpen ? 'var(--chatlist-width)' : 0,
+            overflow:  'hidden',
             transition: 'width 220ms cubic-bezier(0.4,0,0.2,1), min-width 220ms cubic-bezier(0.4,0,0.2,1)',
           }}
         >

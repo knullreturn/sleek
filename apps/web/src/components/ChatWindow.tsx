@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
 import { formatMessageTime, formatDateSeparator, isSameDay, getDmPeer } from '../lib/utils';
@@ -77,7 +77,6 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const chats = useChatStore((s) => s.chats);
   const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
 
-  // Get peer avatar for the typing indicator
   const activeChat = chats.find((c) => c.id === chatId);
   const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
 
@@ -86,9 +85,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     .map((t) => t.username);
 
   const [input, setInput] = useState('');
-  const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Fix #3: useRef avoids stale-closure bugs with rapid keypresses
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bottomRef    = useRef<HTMLDivElement>(null);
+  const canvasRef    = useRef<HTMLDivElement>(null);   // for scroll-position check
+  const textareaRef  = useRef<HTMLTextAreaElement>(null);
 
   // Join chat room on mount
   useEffect(() => {
@@ -97,26 +98,30 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     return () => { socket?.emit('leave_chat', chatId); };
   }, [chatId]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Also scroll when typing indicator appears so it's never half-cut
-  useEffect(() => {
-    if (typingNames.length > 0) {
+  // Fix #4: only auto-scroll when user is already near the bottom (within 80px)
+  const scrollToBottomIfNear = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const distanceFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
+    if (distanceFromBottom < 80) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [typingNames]);
+  }, []);
+
+  useEffect(() => { scrollToBottomIfNear(); }, [messages, scrollToBottomIfNear]);
+  useEffect(() => { if (typingNames.length > 0) scrollToBottomIfNear(); }, [typingNames, scrollToBottomIfNear]);
 
   const handleSend = () => {
     if (!input.trim()) return;
     sendMessage(input);
     setInput('');
+    // reset textarea height
+    if (textareaRef.current) textareaRef.current.style.height = '40px';
     textareaRef.current?.focus();
-    // stop typing
     sendTyping(false);
-    if (typingTimeout) clearTimeout(typingTimeout);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    // always scroll to bottom after sending own message
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -128,32 +133,33 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-
-    // Auto-resize
+    // Auto-resize textarea
     const ta = e.target;
     ta.style.height = 'auto';
     ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
-
-    // Typing indicator
+    // Fix #3: useRef for timeout — no stale closure
     sendTyping(true);
-    if (typingTimeout) clearTimeout(typingTimeout);
-    setTypingTimeout(setTimeout(() => sendTyping(false), 2000));
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => sendTyping(false), 2000);
   };
 
-  // Group messages by day and consecutive sender
-  const grouped: Array<{ date: string; messages: any[] }> = [];
-  messages.forEach((msg) => {
-    const lastGroup = grouped[grouped.length - 1];
-    if (!lastGroup || !isSameDay(lastGroup.date, msg.createdAt)) {
-      grouped.push({ date: msg.createdAt, messages: [msg] });
-    } else {
-      lastGroup.messages.push(msg);
-    }
-  });
+  // Group messages by day — memoised to avoid recomputing on every render
+  const grouped = useMemo(() => {
+    const result: Array<{ date: string; messages: any[] }> = [];
+    messages.forEach((msg) => {
+      const last = result[result.length - 1];
+      if (!last || !isSameDay(last.date, msg.createdAt)) {
+        result.push({ date: msg.createdAt, messages: [msg] });
+      } else {
+        last.messages.push(msg);
+      }
+    });
+    return result;
+  }, [messages]);
 
   return (
     <>
-      <div className="chat-canvas" id="chat-canvas">
+      <div ref={canvasRef} className="chat-canvas" id="chat-canvas">
 
         {/* Loading skeletons */}
         {isLoading && (

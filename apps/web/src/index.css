@@ -163,6 +163,11 @@ textarea {
 }
 
 /* ── Chat List Panel ───────────────────────────────────────────────────────── */
+/* Outer collapse animation container (ChatPage) */
+.chat-list-wrapper {
+  flex-shrink: 0;
+}
+/* Inner panel (ChatList root) — background, border, layout */
 .chat-list-panel {
   width: var(--chatlist-width);
   min-width: var(--chatlist-width);
@@ -171,6 +176,7 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  height: 100%;
 }
 
 /* ── Main Chat Area ────────────────────────────────────────────────────────── */
