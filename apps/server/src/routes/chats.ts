@@ -5,16 +5,18 @@ import { z } from 'zod';
 
 const memberSelect = { id: true, username: true, tag: true, avatarUrl: true };
 
+const fmtUser = (u: any) => ({ ...u, handle: u.tag });  // handle is just the 7-char tag
+
 function serializeMessage(msg: any) {
   return {
     id: msg.id,
     chatId: msg.chatId,
     senderId: msg.senderId,
-    sender: { ...msg.sender, handle: `${msg.sender.username}#${msg.sender.tag}` },
+    sender: fmtUser(msg.sender),
     content: msg.content,
     replyToId: msg.replyToId ?? null,
     replyTo: msg.replyTo
-      ? { id: msg.replyTo.id, content: msg.replyTo.content, sender: { ...msg.replyTo.sender, handle: `${msg.replyTo.sender.username}#${msg.replyTo.sender.tag}` } }
+      ? { id: msg.replyTo.id, content: msg.replyTo.content, sender: fmtUser(msg.replyTo.sender) }
       : null,
     createdAt: msg.createdAt.toISOString(),
     updatedAt: msg.updatedAt.toISOString(),
@@ -42,7 +44,7 @@ export async function chatRoutes(app: FastifyInstance) {
       id: chat.id,
       type: chat.type,
       createdAt: chat.createdAt.toISOString(),
-      members: chat.members.map((m) => ({ ...m.user, handle: `${m.user.username}#${m.user.tag}` })),
+      members: chat.members.map((m) => fmtUser(m.user)),
       lastMessage: chat.messages[0] ? serializeMessage(chat.messages[0]) : null,
     })));
   });
@@ -57,7 +59,6 @@ export async function chatRoutes(app: FastifyInstance) {
     const { targetUserId } = parse.data;
     if (me.id === targetUserId) return reply.status(400).send({ error: 'Bad Request', message: 'Cannot chat with yourself', statusCode: 400 });
 
-    // Find existing DM between these two users
     const existing = await prisma.chat.findFirst({
       where: {
         type: 'DM',
@@ -76,7 +77,7 @@ export async function chatRoutes(app: FastifyInstance) {
       return reply.send({
         id: existing.id, type: existing.type,
         createdAt: existing.createdAt.toISOString(),
-        members: existing.members.map((m) => ({ ...m.user, handle: `${m.user.username}#${m.user.tag}` })),
+        members: existing.members.map((m) => fmtUser(m.user)),
         lastMessage: existing.messages[0] ? serializeMessage(existing.messages[0]) : null,
       });
     }
@@ -89,7 +90,7 @@ export async function chatRoutes(app: FastifyInstance) {
     return reply.status(201).send({
       id: chat.id, type: chat.type,
       createdAt: chat.createdAt.toISOString(),
-      members: chat.members.map((m) => ({ ...m.user, handle: `${m.user.username}#${m.user.tag}` })),
+      members: chat.members.map((m) => fmtUser(m.user)),
       lastMessage: null,
     });
   });

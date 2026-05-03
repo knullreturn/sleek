@@ -4,7 +4,7 @@ import { verifyJwt } from '../lib/jwt';
 
 interface AuthSocket extends Socket {
   userId: string;
-  username: string;
+  username: string | null;
   tag: string;
 }
 
@@ -28,7 +28,7 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
       if (!user) return next(new Error('User not found'));
 
       (socket as AuthSocket).userId = user.id;
-      (socket as AuthSocket).username = user.username;
+      (socket as AuthSocket).username = user.username ?? null;
       (socket as AuthSocket).tag = user.tag;
       next();
     } catch {
@@ -74,11 +74,11 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
 
         const serialized = {
           id: message.id, chatId: message.chatId, senderId: message.senderId,
-          sender: { ...message.sender, handle: `${message.sender.username}#${message.sender.tag}` },
+          sender: { ...message.sender, handle: message.sender.tag },
           content: message.content,
           replyTo: message.replyTo ? {
             id: message.replyTo.id, content: message.replyTo.content,
-            sender: { ...message.replyTo.sender, handle: `${message.replyTo.sender.username}#${message.replyTo.sender.tag}` },
+            sender: { ...message.replyTo.sender, handle: message.replyTo.sender.tag },
           } : null,
           createdAt: message.createdAt.toISOString(),
           updatedAt: message.updatedAt.toISOString(),
