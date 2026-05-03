@@ -345,13 +345,37 @@ textarea {
 
 .msg-group:hover .msg-actions { opacity: 1; }
 
+/* ── Message entrance animations ──────────────────────────────────────────── */
+@keyframes msgInOther {
+  0%   { opacity: 0; transform: translateX(-18px) translateY(8px) scale(0.88); }
+  65%  { transform: translateX(3px)  translateY(-2px) scale(1.025); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes msgInOwn {
+  0%   { opacity: 0; transform: translateX(18px) translateY(8px) scale(0.88); }
+  65%  { transform: translateX(-3px) translateY(-2px) scale(1.025); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes avatarFadeIn {
+  from { opacity: 0; transform: scale(0.7) translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
 .msg-row {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 2px 0;
+  animation: msgInOther 300ms cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
-.msg-row.own { flex-direction: row-reverse; }
+.msg-row.own {
+  flex-direction: row-reverse;
+  animation-name: msgInOwn;
+}
+/* Avatar pops in slightly delayed */
+.msg-row > div:first-child .avatar {
+  animation: avatarFadeIn 280ms cubic-bezier(0.34, 1.45, 0.64, 1) 40ms both;
+}
 
 .msg-bubble {
   max-width: 65%;
@@ -425,15 +449,20 @@ textarea {
   cursor: pointer;
   color: #fff;
   flex-shrink: 0;
-  transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: background var(--transition-fast), transform 150ms cubic-bezier(0.34,1.56,0.64,1), box-shadow var(--transition-fast);
 }
 .send-btn:hover {
   background: var(--accent-hover);
-  box-shadow: 0 4px 12px var(--accent-glow);
-  transform: scale(1.05);
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: scale(1.08);
 }
-.send-btn:active { transform: scale(0.96); }
-.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+@keyframes sendLaunch {
+  0%   { transform: scale(0.82); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.send-btn:active  { animation: sendLaunch 220ms cubic-bezier(0.34,1.56,0.64,1); }
+.send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
 
 /* ── Icon Button ───────────────────────────────────────────────────────────── */
 .icon-btn {
