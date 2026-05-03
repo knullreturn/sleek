@@ -4,7 +4,7 @@ import { getInitials } from '../lib/utils';
 interface AvatarProps {
   src?: string | null;
   username: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   online?: boolean;
   className?: string;
 }

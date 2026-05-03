@@ -70,11 +70,14 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onCont
 
 // ── Reply Chip ─ Concept C ────────────────────────────────────────────────────
 function ReplyChip({ replyTo, isOwn }: { replyTo: any; isOwn: boolean }) {
-  const initial = (replyTo.sender?.username?.[0] ?? '?').toUpperCase();
   return (
     <div className={`reply-chip-wrap ${isOwn ? 'own' : ''}`}>
       <div className="reply-chip">
-        <div className="reply-chip-avatar">{initial}</div>
+        <Avatar
+          src={replyTo.sender?.avatarUrl}
+          username={replyTo.sender?.username || '?'}
+          size="xs"
+        />
         <span className="reply-chip-name">{replyTo.sender?.username}</span>
         <span className="reply-chip-dot">·</span>
         <span className="reply-chip-text">{replyTo.content}</span>

@@ -316,6 +316,7 @@ textarea {
   font-size: 13px;
   text-transform: uppercase;
 }
+.avatar-xs { width: 18px; height: 18px; font-size: 9px; }
 .avatar-sm { width: 32px; height: 32px; font-size: 12px; }
 .avatar-md { width: 40px; height: 40px; font-size: 14px; }
 .avatar-lg { width: 48px; height: 48px; font-size: 16px; }
