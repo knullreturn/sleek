@@ -68,11 +68,21 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
   );
 }
 
+// Skeleton bubble for loading state
+function MessageSkeleton({ own, width }: { own?: boolean; width: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '4px 0', flexDirection: own ? 'row-reverse' : 'row' }}>
+      {!own && <div className="skeleton" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />}
+      <div className="skeleton" style={{ height: 38, width, borderRadius: 16 }} />
+    </div>
+  );
+}
+
 export function ChatWindow({ chatId }: { chatId: string }) {
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
   const typingMap = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
-  const { sendMessage, sendTyping } = useMessages(chatId);
+  const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
 
   const [input, setInput] = useState('');
   const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -140,7 +150,20 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   return (
     <>
       <div className="chat-canvas" id="chat-canvas">
-        {messages.length === 0 && (
+
+        {/* Loading skeletons */}
+        {isLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+            <MessageSkeleton width="45%" />
+            <MessageSkeleton own width="55%" />
+            <MessageSkeleton width="30%" />
+            <MessageSkeleton own width="65%" />
+            <MessageSkeleton width="50%" />
+            <MessageSkeleton own width="40%" />
+          </div>
+        )}
+
+        {!isLoading && messages.length === 0 && (
           <div className="empty-state" style={{ flex: 1, paddingTop: 80 }}>
             <div className="empty-state-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

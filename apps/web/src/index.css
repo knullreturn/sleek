@@ -530,7 +530,7 @@ textarea {
 /* ── Login Page ────────────────────────────────────────────────────────────── */
 .login-page {
   min-height: 100vh;
-  background: var(--bg-base);
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;

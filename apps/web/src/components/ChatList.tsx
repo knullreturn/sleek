@@ -7,16 +7,33 @@ import { useChats } from '../hooks/useData';
 import { Plus } from 'lucide-react';
 import { useUIStore } from '../store/ui.store';
 
+// Skeleton row for loading state
+function ChatItemSkeleton() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' }}>
+      {/* Avatar circle */}
+      <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Name line */}
+        <div className="skeleton" style={{ height: 12, width: '55%', borderRadius: 6 }} />
+        {/* Preview line */}
+        <div className="skeleton" style={{ height: 10, width: '80%', borderRadius: 6 }} />
+      </div>
+      {/* Time */}
+      <div className="skeleton" style={{ height: 10, width: 28, borderRadius: 6 }} />
+    </div>
+  );
+}
+
 export function ChatList() {
   const user = useAuthStore((s) => s.user);
-  // Proper selectors — only re-render when specific slice changes
   const chats = useChatStore((s) => s.chats);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const setActiveChatId = useChatStore((s) => s.setActiveChatId);
   const onlineUsers = useChatStore((s) => s.onlineUsers);
   const setSearchOpen = useUIStore((s) => s.setSearchOpen);
 
-  useChats(); // triggers fetch + sync
+  const { isLoading } = useChats();
 
   return (
     <div className="chat-list-panel">
@@ -60,7 +77,20 @@ export function ChatList() {
 
       {/* Chat items */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {chats.length === 0 && (
+
+        {/* Loading skeletons */}
+        {isLoading && (
+          <>
+            <ChatItemSkeleton />
+            <ChatItemSkeleton />
+            <ChatItemSkeleton />
+            <ChatItemSkeleton />
+            <ChatItemSkeleton />
+          </>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && chats.length === 0 && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
             No conversations yet.
             <br />
@@ -81,6 +111,7 @@ export function ChatList() {
           </div>
         )}
 
+        {/* Chat list */}
         {chats.map((chat) => {
           const peer = getDmPeer(chat, user?.id || '');
           const isActive = chat.id === activeChatId;

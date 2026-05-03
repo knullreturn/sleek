@@ -46,31 +46,11 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* Ambient glow */}
-      <div
-        aria-hidden
-        style={{
-          position: 'fixed',
-          top: '20%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 500,
-          height: 500,
-          borderRadius: '50%',
-          background: 'radial-gradient(ellipse, rgba(124,92,252,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
       <div
         style={{
-          position: 'relative',
-          zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: 0,
         }}
       >
         {/* Big ghost logo */}
@@ -99,19 +79,6 @@ export function LoginPage() {
         >
           SLEEK
         </h1>
-
-        {/* Tagline */}
-        <p
-          style={{
-            fontSize: 15,
-            color: 'var(--text-muted)',
-            marginTop: 12,
-            marginBottom: 48,
-            letterSpacing: 0.2,
-          }}
-        >
-          Clean. Fast. Private.
-        </p>
 
         {/* Google sign-in button */}
         {!loading ? (
