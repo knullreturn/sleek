@@ -1,15 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Copy, Reply, Pencil, Pin, Trash2 } from 'lucide-react';
+import { Copy, Reply, Pencil, Pin, Trash2, Check } from 'lucide-react';
 
 interface MessageContextMenuProps {
-  x:       number;
-  y:       number;
-  isOwn:   boolean;
-  onClose: () => void;
+  x:        number;
+  y:        number;
+  isOwn:    boolean;
+  content:  string;
+  onClose:  () => void;
 }
 
-const ITEMS = [
+const BASE_ITEMS = [
   { id: 'copy',   label: 'Copy',   icon: Copy,   ownOnly: false, danger: false },
   { id: 'reply',  label: 'Reply',  icon: Reply,  ownOnly: false, danger: false },
   { id: 'edit',   label: 'Edit',   icon: Pencil, ownOnly: true,  danger: false },
@@ -17,8 +18,9 @@ const ITEMS = [
   { id: 'delete', label: 'Delete', icon: Trash2, ownOnly: true,  danger: true  },
 ];
 
-export function MessageContextMenu({ x, y, isOwn, onClose }: MessageContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
+export function MessageContextMenu({ x, y, isOwn, content, onClose }: MessageContextMenuProps) {
+  const menuRef       = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   // Close on outside click
   useEffect(() => {
@@ -39,15 +41,34 @@ export function MessageContextMenu({ x, y, isOwn, onClose }: MessageContextMenuP
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Smart positioning — keep on screen
+  // Smart positioning
   const menuW = 200;
-  const menuH = ITEMS.filter(i => !i.ownOnly || isOwn).length * 44 + 16;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const left = x + menuW > vw ? x - menuW : x;
-  const top  = y + menuH > vh ? y - menuH : y;
+  const menuH = BASE_ITEMS.filter(i => !i.ownOnly || isOwn).length * 44 + 16;
+  const vw    = window.innerWidth;
+  const vh    = window.innerHeight;
+  const left  = x + menuW > vw ? x - menuW : x;
+  const top   = y + menuH > vh ? y - menuH : y;
 
-  const visibleItems = ITEMS.filter(i => !i.ownOnly || isOwn);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        onClose();
+      }, 1200);
+    } catch {
+      onClose();
+    }
+  };
+
+  const handleAction = (id: string) => {
+    if (id === 'copy') { handleCopy(); return; }
+    // other actions wired later
+    onClose();
+  };
+
+  const visibleItems = BASE_ITEMS.filter(i => !i.ownOnly || isOwn);
 
   return createPortal(
     <div
@@ -57,17 +78,24 @@ export function MessageContextMenu({ x, y, isOwn, onClose }: MessageContextMenuP
       role="menu"
     >
       {visibleItems.map((item, i) => {
-        const Icon = item.icon;
+        const isCopyItem = item.id === 'copy';
+        const showTick   = isCopyItem && copied;
+        const Icon       = item.icon;
+
         return (
           <button
             key={item.id}
-            className={`ctx-item ${item.danger ? 'danger' : ''}`}
+            className={`ctx-item ${item.danger ? 'danger' : ''} ${showTick ? 'copied' : ''}`}
             style={{ '--delay': `${i * 40}ms` } as React.CSSProperties}
-            onClick={onClose}
+            onClick={() => handleAction(item.id)}
             role="menuitem"
           >
-            <span className="ctx-icon"><Icon size={15} /></span>
-            <span>{item.label}</span>
+            <span className="ctx-icon">
+              {showTick
+                ? <Check size={15} className="ctx-tick" />
+                : <Icon  size={15} />}
+            </span>
+            <span>{showTick ? 'Copied!' : item.label}</span>
           </button>
         );
       })}

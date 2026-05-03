@@ -285,6 +285,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
           x={contextMenu.x}
           y={contextMenu.y}
           isOwn={contextMenu.message.senderId === user?.id}
+          content={contextMenu.message.content}
           onClose={() => setContextMenu(null)}
         />
       )}
