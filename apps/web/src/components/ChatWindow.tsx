@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
 import { formatMessageTime, formatDateSeparator, isSameDay, getDmPeer } from '../lib/utils';
@@ -98,18 +98,41 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     return () => { socket?.emit('leave_chat', chatId); };
   }, [chatId]);
 
-  // Fix #4: only auto-scroll when user is already near the bottom (within 80px)
-  const scrollToBottomIfNear = useCallback(() => {
+  const initialScrollDone = useRef(false);
+
+  // Always scroll to bottom when switching chats
+  useEffect(() => {
+    initialScrollDone.current = false;
+  }, [chatId]);
+
+  // Scroll logic: force on first load, proximity-check for live incoming messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (!initialScrollDone.current) {
+      // First load for this chat — always jump to bottom
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      initialScrollDone.current = true;
+      return;
+    }
+    // Subsequent messages — only scroll if already near bottom
     const canvas = canvasRef.current;
     if (!canvas) return;
     const distanceFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
-    if (distanceFromBottom < 80) {
+    if (distanceFromBottom < 120) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []);
+  }, [messages]);
 
-  useEffect(() => { scrollToBottomIfNear(); }, [messages, scrollToBottomIfNear]);
-  useEffect(() => { if (typingNames.length > 0) scrollToBottomIfNear(); }, [typingNames, scrollToBottomIfNear]);
+  // Typing indicator — scroll if near bottom
+  useEffect(() => {
+    if (typingNames.length === 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const distanceFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
+    if (distanceFromBottom < 120) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [typingNames]);
 
   const handleSend = () => {
     if (!input.trim()) return;
