@@ -37,14 +37,6 @@ function MessageBubble({ message, isOwn, showAvatar, showSender }: MessageBubble
         {showSender && !isOwn && (
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
-        {message.replyTo && (
-          <div className="reply-preview">
-            <div className="reply-preview-sender">{message.replyTo.sender?.username}</div>
-            <div className="reply-preview-content" style={{ lineClamp: 1 }}>
-              {message.replyTo.content}
-            </div>
-          </div>
-        )}
         <div className={`msg-bubble ${isOwn ? 'own' : 'other'}`}>
           <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
           <span
