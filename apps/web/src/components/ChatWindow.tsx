@@ -106,6 +106,13 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Also scroll when typing indicator appears so it's never half-cut
+  useEffect(() => {
+    if (typingNames.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [typingNames]);
+
   const handleSend = () => {
     if (!input.trim()) return;
     sendMessage(input);
