@@ -20,6 +20,8 @@ function serializeMessage(message: any) {
     content:         message.content,
     edited:          message.edited,
     originalContent: message.originalContent ?? null,
+    pinned:          message.pinned,
+    pinnedAt:        message.pinnedAt ? message.pinnedAt.toISOString() : null,
     replyTo: message.replyTo ? {
       id:      message.replyTo.id,
       content: message.replyTo.content,
@@ -127,6 +129,52 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
       } catch (err) {
         console.error('edit_message error:', err);
         socket.emit('error', { message: 'Failed to edit message' });
+      }
+    });
+
+    socket.on('pin_message', async (payload: { messageId: string; chatId: string }) => {
+      try {
+        const { messageId, chatId } = payload;
+        const member = await prisma.chatMember.findUnique({
+          where: { chatId_userId: { chatId, userId: s.userId } },
+        });
+        if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
+
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data:  { pinned: true, pinnedAt: new Date() },
+          include: {
+            sender: { select: memberSelect },
+            replyTo: { include: { sender: { select: memberSelect } } },
+          },
+        });
+        io.to(`chat:${chatId}`).emit('message_pinned', { message: serializeMessage(updated) });
+      } catch (err) {
+        console.error('pin_message error:', err);
+        socket.emit('error', { message: 'Failed to pin message' });
+      }
+    });
+
+    socket.on('unpin_message', async (payload: { messageId: string; chatId: string }) => {
+      try {
+        const { messageId, chatId } = payload;
+        const member = await prisma.chatMember.findUnique({
+          where: { chatId_userId: { chatId, userId: s.userId } },
+        });
+        if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
+
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data:  { pinned: false, pinnedAt: null },
+          include: {
+            sender: { select: memberSelect },
+            replyTo: { include: { sender: { select: memberSelect } } },
+          },
+        });
+        io.to(`chat:${chatId}`).emit('message_unpinned', { message: serializeMessage(updated) });
+      } catch (err) {
+        console.error('unpin_message error:', err);
+        socket.emit('error', { message: 'Failed to unpin message' });
       }
     });
 

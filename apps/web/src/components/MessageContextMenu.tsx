@@ -6,21 +6,23 @@ interface MessageContextMenuProps {
   x:        number;
   y:        number;
   isOwn:    boolean;
+  isPinned: boolean;
   content:  string;
   onClose:  () => void;
   onReply:  () => void;
   onEdit:   () => void;
+  onPin:    () => void;
 }
 
 const BASE_ITEMS = [
   { id: 'copy',   label: 'Copy',   icon: Copy,   ownOnly: false, danger: false },
   { id: 'reply',  label: 'Reply',  icon: Reply,  ownOnly: false, danger: false },
-  { id: 'edit',   label: 'Edit',   icon: Pencil, ownOnly: true,  danger: false },
   { id: 'pin',    label: 'Pin',    icon: Pin,    ownOnly: false, danger: false },
+  { id: 'edit',   label: 'Edit',   icon: Pencil, ownOnly: true,  danger: false },
   { id: 'delete', label: 'Delete', icon: Trash2, ownOnly: true,  danger: true  },
 ];
 
-export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply, onEdit }: MessageContextMenuProps) {
+export function MessageContextMenu({ x, y, isOwn, isPinned, content, onClose, onReply, onEdit, onPin }: MessageContextMenuProps) {
   const menuRef       = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -68,7 +70,8 @@ export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply, onE
     if (id === 'copy')  { handleCopy();  return; }
     if (id === 'reply') { onReply(); onClose(); return; }
     if (id === 'edit')  { onEdit();  onClose(); return; }
-    // pin / delete — wired later
+    if (id === 'pin')   { onPin();   onClose(); return; }
+    // delete — wired later
     onClose();
   };
 
@@ -99,7 +102,7 @@ export function MessageContextMenu({ x, y, isOwn, content, onClose, onReply, onE
                 ? <Check size={15} className="ctx-tick" />
                 : <Icon  size={15} />}
             </span>
-            <span>{showTick ? 'Copied!' : item.label}</span>
+            <span>{showTick ? 'Copied!' : (item.id === 'pin' && isPinned) ? 'Unpin' : item.label}</span>
           </button>
         );
       })}

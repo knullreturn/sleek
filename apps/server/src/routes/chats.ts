@@ -16,7 +16,9 @@ function serializeMessage(msg: any) {
     content:         msg.content,
     edited:          msg.edited          ?? false,
     originalContent: msg.originalContent ?? null,
-    replyToId:       msg.replyToId       ?? null,
+    pinned:          msg.pinned           ?? false,
+    pinnedAt:        msg.pinnedAt         ? msg.pinnedAt.toISOString() : null,
+    replyToId:       msg.replyToId        ?? null,
     replyTo: msg.replyTo
       ? { id: msg.replyTo.id, content: msg.replyTo.content, sender: fmtUser(msg.replyTo.sender) }
       : null,
@@ -124,5 +126,23 @@ export async function chatRoutes(app: FastifyInstance) {
       hasMore,
       nextCursor: hasMore ? result[0].createdAt.toISOString() : undefined,
     });
+  });
+  // GET /api/chats/:id/pins
+  app.get('/:id/pins', { preHandler: authenticate }, async (request, reply) => {
+    const me = (request as any).user;
+    const { id } = request.params as { id: string };
+
+    const member = await prisma.chatMember.findUnique({
+      where: { chatId_userId: { chatId: id, userId: me.id } },
+    });
+    if (!member) return reply.status(403).send({ error: 'Forbidden', statusCode: 403 });
+
+    const pinned = await prisma.message.findMany({
+      where:   { chatId: id, pinned: true },
+      include: { sender: { select: memberSelect }, replyTo: { include: { sender: { select: memberSelect } } } },
+      orderBy: { pinnedAt: 'desc' },
+    });
+
+    return reply.send({ pins: pinned.map(serializeMessage) });
   });
 }

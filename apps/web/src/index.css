@@ -1165,3 +1165,157 @@ button.reply-chip:active { transform: scale(0.97); }
   font-size: 13px; color: var(--text-secondary);
   line-height: 1.5; word-break: break-word;
 }
+
+/* -- Pin badge on message bubble ---------------------------------------------- */
+@keyframes pinBadgeIn {
+  0%   { opacity: 0; transform: rotate(-45deg) scale(0.3); }
+  60%  { transform: rotate(10deg) scale(1.2); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+.msg-pin-badge {
+  display: inline-flex; align-items: center;
+  float: right;
+  color: var(--accent);
+  margin-left: 6px;
+  animation: pinBadgeIn 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  opacity: 0.8;
+}
+.msg-pin-badge:hover { opacity: 1; }
+
+/* -- Pin count badge on header button ---------------------------------------- */
+.pin-count-badge {
+  position: absolute; top: -3px; right: -3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px; font-weight: 700;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--bg-base);
+  animation: pinBadgeIn 350ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Context menu: pinned-active item */
+.ctx-item.pinned-active { color: var(--accent); }
+.ctx-item.pinned-active:hover { background: rgba(124,92,252,0.1); color: var(--accent); }
+
+/* -- Pinned Panel -------------------------------------------------------------- */
+@keyframes panelSlideIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.pinned-panel {
+  position: fixed;
+  top: calc(var(--header-height) + 8px);
+  right: 16px;
+  width: 340px;
+  max-height: calc(100vh - var(--header-height) - 32px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 800;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: panelSlideIn 260ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.pinned-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.pinned-panel-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+}
+.pinned-panel-icon { color: var(--accent); }
+.pinned-count {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 6px; border-radius: 20px;
+}
+
+.pinned-panel-body {
+  overflow-y: auto; flex: 1;
+  padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* Skeleton */
+.pinned-loading { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+.pinned-skeleton {
+  height: 78px; border-radius: 12px;
+  background: linear-gradient(90deg, var(--bg-input) 25%, var(--bg-elevated) 50%, var(--bg-input) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Empty */
+.pinned-empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 40px 20px; color: var(--text-muted);
+  text-align: center;
+}
+.pinned-empty p { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0; }
+.pinned-empty span { font-size: 11.5px; }
+
+/* Cards */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.pinned-card {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  animation: cardIn 220ms cubic-bezier(0.34, 1.3, 0.64, 1) var(--card-delay, 0ms) both;
+  transition: border-color 150ms;
+}
+.pinned-card:hover { border-color: rgba(124,92,252,0.35); }
+
+.pinned-card-bar { width: 3px; background: var(--accent); flex-shrink: 0; }
+
+.pinned-card-inner { padding: 10px 12px; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.pinned-card-sender {
+  display: flex; align-items: center; gap: 6px;
+}
+.pinned-card-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.pinned-card-time { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+
+.pinned-card-content {
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.pinned-card-actions {
+  display: flex; gap: 6px; margin-top: 2px;
+}
+.pinned-action-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px; font-weight: 600; font-family: inherit;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.pinned-action-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); border-color: rgba(255,255,255,0.12); }
+.pinned-action-btn.danger:hover { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.25); }

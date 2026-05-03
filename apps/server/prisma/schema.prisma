@@ -49,22 +49,25 @@ model ChatMember {
 }
 
 model Message {
-  id              String   @id @default(cuid())
-  chat            Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  chat            Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
   chatId          String
-  sender          User     @relation("MessageSender", fields: [senderId], references: [id])
+  sender          User      @relation("MessageSender", fields: [senderId], references: [id])
   senderId        String
   content         String
-  edited          Boolean  @default(false)
+  edited          Boolean   @default(false)
   originalContent String?
+  pinned          Boolean   @default(false)
+  pinnedAt        DateTime?
   replyToId       String?
-  replyTo         Message? @relation("MessageReply", fields: [replyToId], references: [id])
+  replyTo         Message?  @relation("MessageReply", fields: [replyToId], references: [id])
   replies         Message[] @relation("MessageReply")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([chatId, createdAt])
   @@index([senderId])
+  @@index([chatId, pinned])
 }
 
 enum ChatType {

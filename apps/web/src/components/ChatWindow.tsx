@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
 import { useMessages } from '../hooks/useData';
 import { getSocket } from '../hooks/useSocket';
-import { Send, Paperclip, Smile, X } from 'lucide-react';
+import { Send, Paperclip, Smile, X, Pin } from 'lucide-react';
 
 // Stable references — prevent new array on every render (causes infinite loop)
 const EMPTY_MESSAGES: any[] = [];
@@ -114,6 +114,12 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, isEdit
             className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
             onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
           >
+            {/* Pin badge */}
+            {message.pinned && (
+              <span className="msg-pin-badge" title="Pinned message">
+                <Pin size={10} />
+              </span>
+            )}
             <span style={{ wordBreak: 'break-word', lineHeight: 1.55 }}>{message.content}</span>
             <span style={{ float: 'right', fontSize: 10, opacity: 0.55, marginLeft: 8, marginTop: 4, position: 'relative', top: 3, whiteSpace: 'nowrap', letterSpacing: 0.2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               {message.edited && message.originalContent && (
@@ -214,11 +220,17 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   // Reset on chat switch
   useEffect(() => { setReplyingTo(null); setContextMenu(null); setEditingId(null); }, [chatId]);
 
-  // Save edit — emit to socket, close edit mode
+  // Save edit
   const handleEditSave = (messageId: string, newContent: string) => {
     const socket = getSocket();
     socket?.emit('edit_message', { messageId, chatId, newContent });
     setEditingId(null);
+  };
+
+  // Pin / unpin
+  const handlePin = (messageId: string, currentlyPinned: boolean) => {
+    const socket = getSocket();
+    socket?.emit(currentlyPinned ? 'unpin_message' : 'pin_message', { messageId, chatId });
   };
 
   // Scroll to original message and flash highlight
@@ -418,6 +430,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
           x={contextMenu.x}
           y={contextMenu.y}
           isOwn={contextMenu.message.senderId === user?.id}
+          isPinned={!!contextMenu.message.pinned}
           content={contextMenu.message.content}
           onClose={() => setContextMenu(null)}
           onReply={() => {
@@ -429,6 +442,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
             setEditingId(contextMenu!.message.id);
             setContextMenu(null);
           }}
+          onPin={() => handlePin(contextMenu!.message.id, !!contextMenu!.message.pinned)}
         />
       )}
     </>

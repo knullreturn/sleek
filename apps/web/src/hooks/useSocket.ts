@@ -44,6 +44,14 @@ export function useSocket() {
       });
     });
 
+    socket.on('message_pinned', ({ message }: { message: any }) => {
+      updateMessage(message.chatId, { id: message.id, pinned: true,  pinnedAt: message.pinnedAt });
+    });
+
+    socket.on('message_unpinned', ({ message }: { message: any }) => {
+      updateMessage(message.chatId, { id: message.id, pinned: false, pinnedAt: null });
+    });
+
     socket.on('typing', (payload: { chatId: string; userId: string; username: string; isTyping: boolean }) => {
       setTyping(payload.chatId, payload.userId, payload.username, payload.isTyping);
     });

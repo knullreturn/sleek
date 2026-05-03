@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatList } from '../components/ChatList';
 import { ChatWindow } from '../components/ChatWindow';
 import { Sidebar } from '../components/Sidebar';
 import { SearchModal } from '../components/SearchModal';
+import { PinnedPanel } from '../components/PinnedPanel';
 import { Avatar } from '../components/Avatar';
 import { useChatStore } from '../store/chat.store';
 import { useAuthStore } from '../store/auth.store';
 import { useUIStore } from '../store/ui.store';
 import { useSocket } from '../hooks/useSocket';
 import { getDmPeer } from '../lib/utils';
-import { MessageSquare, Search, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { MessageSquare, Search, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pin } from 'lucide-react';
 
 export function ChatPage() {
   const activeChatId = useChatStore((s) => s.activeChatId);
@@ -24,6 +25,11 @@ export function ChatPage() {
   const activeChat = chats.find((c) => c.id === activeChatId);
   const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
   const isOnline = peer ? onlineUsers.has(peer.id) : false;
+
+  // Count pinned messages in active chat
+  const messages     = useChatStore((s) => s.messages[activeChatId ?? ''] ?? []);
+  const pinnedCount  = messages.filter((m) => m.pinned).length;
+  const [pinPanelOpen, setPinPanelOpen] = useState(false);
 
   useSocket();
 
@@ -81,6 +87,19 @@ export function ChatPage() {
                 </div>
               </div>
               <button
+                id="header-pin-btn"
+                className="icon-btn"
+                onClick={() => setPinPanelOpen((o) => !o)}
+                title="Pinned messages"
+                aria-label="Pinned messages"
+                style={{ position: 'relative' }}
+              >
+                <Pin size={16} />
+                {pinnedCount > 0 && (
+                  <span className="pin-count-badge">{pinnedCount}</span>
+                )}
+              </button>
+              <button
                 id="header-search-btn"
                 className="icon-btn"
                 onClick={() => setSearchOpen(true)}
@@ -129,6 +148,21 @@ export function ChatPage() {
       </div>
 
       {searchOpen && <SearchModal />}
+
+      {/* Pinned messages panel */}
+      {pinPanelOpen && activeChatId && (
+        <PinnedPanel
+          chatId={activeChatId}
+          onClose={() => setPinPanelOpen(false)}
+          onJump={(msgId) => {
+            const el = document.getElementById(`msg-${msgId}`);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('msg-highlight');
+            setTimeout(() => el.classList.remove('msg-highlight'), 1800);
+          }}
+        />
+      )}
     </div>
   );
 }
