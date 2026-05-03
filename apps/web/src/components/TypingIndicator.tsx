@@ -1,30 +1,19 @@
 import React from 'react';
+import { Avatar } from './Avatar';
 
 interface TypingIndicatorProps {
   names: string[];
   avatarUrl?: string;
+  avatarUsername?: string;
 }
 
-export function TypingIndicator({ names, avatarUrl }: TypingIndicatorProps) {
+export function TypingIndicator({ names, avatarUrl, avatarUsername }: TypingIndicatorProps) {
   if (names.length === 0) return null;
 
   return (
     <div className="typing-message-row">
-      {/* Avatar */}
-      <div
-        className="avatar avatar-sm"
-        style={{
-          background: 'linear-gradient(135deg, #8b5cf6, #4c1d95)',
-          boxShadow: '0 0 10px rgba(139,92,246,0.4)',
-          flexShrink: 0,
-        }}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-        ) : null}
-      </div>
+      <Avatar src={avatarUrl} username={avatarUsername || '?'} size="sm" />
 
-      {/* Bubble with mini keyboard */}
       <div className="typing-bubble">
         <div className="mini-keyboard">
           <div className="m-key delay-1" />

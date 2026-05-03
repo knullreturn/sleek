@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Avatar } from './Avatar';
 import { TypingIndicator } from './TypingIndicator';
-import { formatMessageTime, formatDateSeparator, isSameDay } from '../lib/utils';
+import { formatMessageTime, formatDateSeparator, isSameDay, getDmPeer } from '../lib/utils';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
 import { useMessages } from '../hooks/useData';
@@ -82,7 +82,12 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const user = useAuthStore((s) => s.user);
   const messages = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
   const typingMap = useChatStore((s) => s.typing[chatId] ?? EMPTY_TYPING);
+  const chats = useChatStore((s) => s.chats);
   const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
+
+  // Get peer avatar for the typing indicator
+  const activeChat = chats.find((c) => c.id === chatId);
+  const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
 
   const [input, setInput] = useState('');
   const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -198,7 +203,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
         {/* Typing indicator — shown as a message in chat area */}
         {typingNames.length > 0 && (
-          <TypingIndicator names={typingNames} />
+          <TypingIndicator names={typingNames} avatarUrl={peer?.avatarUrl} avatarUsername={peer?.username} />
         )}
 
         <div ref={bottomRef} />

@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { Redis } from 'ioredis';
 import { prisma } from './lib/prisma';
 import { registerSocketServer } from './socket/index';
 import { authRoutes } from './routes/auth';
@@ -33,7 +35,7 @@ async function bootstrap() {
   // Must call ready() before accessing app.server
   await app.ready();
 
-  // ── Socket.IO — attaches to Fastify's internal HTTP server ─────────────────
+  // ── Socket.IO ───────────────────────────────────────────────────────────────
   const io = new Server(app.server, {
     cors: {
       origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : '*',
@@ -41,6 +43,30 @@ async function bootstrap() {
     },
     transports: ['websocket', 'polling'],
   });
+
+  // ── Redis adapter (if REDIS_URL is set) ─────────────────────────────────────
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = new Redis(process.env.REDIS_URL);
+      const subClient = pubClient.duplicate();
+
+      await Promise.all([
+        new Promise<void>((res, rej) => pubClient.once('ready', res).once('error', rej)),
+        new Promise<void>((res, rej) => subClient.once('ready', res).once('error', rej)),
+      ]);
+
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log('✅ Redis adapter connected');
+
+      // Clean up on shutdown
+      process.on('SIGTERM', () => { pubClient.quit(); subClient.quit(); });
+      process.on('SIGINT',  () => { pubClient.quit(); subClient.quit(); });
+    } catch (err) {
+      console.warn('⚠️  Redis connection failed — running without adapter:', err);
+    }
+  } else {
+    console.log('ℹ️  REDIS_URL not set — using in-memory adapter');
+  }
 
   registerSocketServer(io, prisma);
 
