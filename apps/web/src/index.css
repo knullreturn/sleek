@@ -1071,3 +1071,27 @@ textarea {
   font-size: 12px; color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* -- Message highlight (jump-to) ---------------------------------------------- */
+@keyframes msgHighlight {
+  0%   { background: rgba(124, 92, 252, 0);   }
+  20%  { background: rgba(124, 92, 252, 0.22); box-shadow: 0 0 0 6px rgba(124,92,252,0.08); }
+  70%  { background: rgba(124, 92, 252, 0.12); }
+  100% { background: rgba(124, 92, 252, 0);   box-shadow: none; }
+}
+.msg-highlight {
+  animation: msgHighlight 1.8s ease forwards;
+  border-radius: var(--radius-md);
+}
+
+/* Reply chip as button reset */
+button.reply-chip {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+button.reply-chip:hover { border-color: var(--accent); background: rgba(124,92,252,0.07); }
+button.reply-chip:active { transform: scale(0.97); }

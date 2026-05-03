@@ -20,11 +20,12 @@ interface MessageBubbleProps {
   showSender:    boolean;
   replyTo:       any | null;
   onContextMenu: (e: React.MouseEvent, message: any) => void;
+  onScrollTo:    (id: string) => void;
 }
 
-function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onContextMenu }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onContextMenu, onScrollTo }: MessageBubbleProps) {
   return (
-    <div className={`msg-row ${isOwn ? 'own' : ''}`}>
+    <div id={`msg-${message.id}`} className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
         <div style={{ width: 32, flexShrink: 0 }}>
           {showAvatar && (
@@ -41,7 +42,7 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onCont
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
         {/* Concept C: floating chip + connector line */}
-        {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} />}
+        {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} onScrollTo={onScrollTo} />}
         <div
           className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
           onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
@@ -69,10 +70,16 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onCont
 }
 
 // ── Reply Chip ─ Concept C ────────────────────────────────────────────────────
-function ReplyChip({ replyTo, isOwn }: { replyTo: any; isOwn: boolean }) {
+function ReplyChip({
+  replyTo, isOwn, onScrollTo,
+}: { replyTo: any; isOwn: boolean; onScrollTo: (id: string) => void }) {
   return (
     <div className={`reply-chip-wrap ${isOwn ? 'own' : ''}`}>
-      <div className="reply-chip">
+      <button
+        className="reply-chip"
+        onClick={() => onScrollTo(replyTo.id)}
+        title="Jump to original message"
+      >
         <Avatar
           src={replyTo.sender?.avatarUrl}
           username={replyTo.sender?.username || '?'}
@@ -81,7 +88,7 @@ function ReplyChip({ replyTo, isOwn }: { replyTo: any; isOwn: boolean }) {
         <span className="reply-chip-name">{replyTo.sender?.username}</span>
         <span className="reply-chip-dot">·</span>
         <span className="reply-chip-text">{replyTo.content}</span>
-      </div>
+      </button>
       <div className="reply-chip-line" />
     </div>
   );
@@ -146,6 +153,15 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   // Reset reply + menu when switching chats
   useEffect(() => { setReplyingTo(null); setContextMenu(null); }, [chatId]);
+
+  // Scroll to original message and flash highlight
+  const scrollToMessage = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('msg-highlight');
+    setTimeout(() => el.classList.remove('msg-highlight'), 1800);
+  };
 
   useEffect(() => {
     initialScrollDone.current = false;
@@ -273,6 +289,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
                     setContextMenu({ x: e.clientX, y: e.clientY, message: msg });
                   }}
                   replyTo={msg.replyTo ?? null}
+                  onScrollTo={scrollToMessage}
                 />
               );
             })}
