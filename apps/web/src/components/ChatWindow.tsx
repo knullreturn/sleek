@@ -159,10 +159,6 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     }
   });
 
-  const typingNames = typingMap
-    .filter((t) => t.userId !== user?.id)
-    .map((t) => t.username);
-
   return (
     <>
       <div className="chat-canvas" id="chat-canvas">
