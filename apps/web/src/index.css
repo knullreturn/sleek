@@ -784,32 +784,98 @@ textarea {
   color: var(--text-primary);
 }
 
-/* Settings Overlay */
-@keyframes settingsOverlayIn  { from { opacity: 0; } to { opacity: 1; } }
-@keyframes settingsOverlayOut { from { opacity: 1; } to { opacity: 0; } }
-@keyframes settingsNavIn { from { opacity: 0; transform: translateX(-32px) scale(1.03); } to { opacity: 1; transform: translateX(0) scale(1); } }
-@keyframes settingsNavOut { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(-24px) scale(0.97); } }
-@keyframes settingsContentIn { from { opacity: 0; transform: translateX(32px) scale(1.03); } to { opacity: 1; transform: translateX(0) scale(1); } }
-@keyframes settingsContentOut { from { opacity: 1; transform: translateX(0) scale(1); } to { opacity: 0; transform: translateX(24px) scale(0.97); } }
-.settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; animation: settingsOverlayIn 200ms ease forwards; }
-.settings-overlay.settings-closing { animation: settingsOverlayOut 220ms ease forwards; }
-.settings-panel-wrap { display: flex; width: min(900px, 94vw); height: min(620px, 90vh); border-radius: 16px; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.6); border: 1px solid var(--border-subtle); }
-.settings-nav { width: 220px; flex-shrink: 0; background: var(--bg-surface); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; animation: settingsNavIn 250ms cubic-bezier(0.16,1,0.3,1) forwards; }
-.settings-nav.settings-nav-out { animation: settingsNavOut 220ms cubic-bezier(0.4,0,1,1) forwards; }
-.settings-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: var(--radius-md); border: none; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer; transition: background 120ms, color 120ms; text-align: left; }
+
+/* -- Settings Full Page ------------------------------------------------------ */
+@keyframes settingsNavIn {
+  from { opacity: 0; transform: translateX(-60px) scale(1.1); }
+  to   { opacity: 1; transform: translateX(0)     scale(1);   }
+}
+@keyframes settingsNavOut {
+  from { opacity: 1; transform: translateX(0)     scale(1);    }
+  to   { opacity: 0; transform: translateX(-50px) scale(0.92); }
+}
+@keyframes settingsContentIn {
+  from { opacity: 0; transform: translateX(60px) scale(1.1); }
+  to   { opacity: 1; transform: translateX(0)    scale(1);   }
+}
+@keyframes settingsContentOut {
+  from { opacity: 1; transform: translateX(0)    scale(1);    }
+  to   { opacity: 0; transform: translateX(50px) scale(0.92); }
+}
+@keyframes settingsPageIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes settingsPageOut { from { opacity: 1; } to { opacity: 0; } }
+
+.settings-fullpage {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg-base);
+  display: flex;
+  animation: settingsPageIn 180ms ease forwards;
+}
+.settings-fullpage.settings-fullpage-out {
+  animation: settingsPageOut 260ms ease forwards;
+}
+
+.settings-nav {
+  width: 260px; flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  padding-top: 16px;
+  animation: settingsNavIn 300ms cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.settings-nav.settings-nav-out {
+  animation: settingsNavOut 240ms cubic-bezier(0.4,0,1,1) forwards;
+}
+
+.settings-back-btn {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 8px 16px; padding: 8px 12px;
+  border-radius: var(--radius-md); border: none;
+  background: transparent; color: var(--text-muted);
+  font-size: 14px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: background 120ms, color 120ms;
+}
+.settings-back-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.settings-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px;
+  border-radius: var(--radius-md); border: none;
+  background: transparent; color: var(--text-secondary);
+  font-size: 14px; font-weight: 500; font-family: inherit;
+  cursor: pointer; transition: background 120ms, color 120ms; text-align: left;
+}
 .settings-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
 .settings-nav-item.active { background: var(--accent-dim); color: var(--accent); }
 .settings-nav-item.danger { color: var(--danger); }
 .settings-nav-item.danger:hover { background: rgba(239,68,68,0.12); color: var(--danger); }
-.settings-content { flex: 1; background: var(--bg-base); overflow-y: auto; position: relative; animation: settingsContentIn 280ms cubic-bezier(0.16,1,0.3,1) forwards; }
-.settings-content.settings-content-out { animation: settingsContentOut 220ms cubic-bezier(0.4,0,1,1) forwards; }
-.settings-close-btn { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--bg-elevated); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 120ms, color 120ms; }
+
+.settings-content {
+  flex: 1; overflow-y: auto; position: relative;
+  animation: settingsContentIn 340ms cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.settings-content.settings-content-out {
+  animation: settingsContentOut 240ms cubic-bezier(0.4,0,1,1) forwards;
+}
+
+.settings-close-btn {
+  position: absolute; top: 24px; right: 24px;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: var(--bg-elevated); color: var(--text-muted);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 120ms, color 120ms;
+}
 .settings-close-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.settings-section { padding: 36px 40px; }
-.settings-section-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0 0 24px; letter-spacing: -0.4px; }
-.settings-profile-card { display: flex; align-items: center; gap: 20px; padding: 20px; background: var(--bg-elevated); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); margin-bottom: 24px; }
-.settings-profile-card:hover .avatar-overlay { opacity: 1 !important; }
+
+.settings-section { padding: 40px 60px; max-width: 640px; }
+.settings-section-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0 0 28px; letter-spacing: -0.5px; }
+.settings-profile-card { display: flex; align-items: center; gap: 20px; padding: 24px; background: var(--bg-elevated); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); margin-bottom: 28px; }
 .settings-field-group { margin-bottom: 20px; }
 .settings-label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 .settings-field-value { padding: 10px 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-size: 14px; }
 .avatar-lg { width: 64px !important; height: 64px !important; font-size: 22px !important; }
+
+/* Avatar upload overlay in settings */
+.settings-avatar-wrap { position: relative; display: inline-block; cursor: pointer; border-radius: 50%; }
+.settings-avatar-overlay { position: absolute; inset: 0; border-radius: 50%; background: rgba(0,0,0,0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: opacity 150ms; pointer-events: none; }
+.settings-avatar-wrap:hover .settings-avatar-overlay { opacity: 1; }
