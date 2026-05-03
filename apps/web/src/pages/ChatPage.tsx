@@ -26,9 +26,13 @@ export function ChatPage() {
   const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
   const isOnline = peer ? onlineUsers.has(peer.id) : false;
 
-  // Count pinned messages in active chat
-  const messages     = useChatStore((s) => s.messages[activeChatId ?? ''] ?? []);
-  const pinnedCount  = messages.filter((m) => m.pinned).length;
+  // Count pinned messages — selector returns a number (primitive) to avoid
+  // infinite re-renders caused by new array references on every selector call
+  const pinnedCount = useChatStore((s) =>
+    activeChatId
+      ? (s.messages[activeChatId] ?? []).filter((m: any) => m.pinned).length
+      : 0
+  );
   const [pinPanelOpen, setPinPanelOpen] = useState(false);
 
   useSocket();
