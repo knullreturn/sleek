@@ -3,11 +3,12 @@ import { persist } from 'zustand/middleware';
 
 interface User {
   id: string;
-  username: string;
-  tag: string;
-  handle: string;
+  username: string | null;   // null until onboarding complete
+  tag: string;               // 7-char unique ID e.g. 483921A
+  handle: string;            // same as tag
   avatarUrl: string | null;
   createdAt: string;
+  needsOnboarding?: boolean;
 }
 
 interface AuthState {

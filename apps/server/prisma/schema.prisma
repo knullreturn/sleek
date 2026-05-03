@@ -13,8 +13,8 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   googleId  String   @unique
-  username  String
-  tag       String   // 4-5 digit unique per username
+  username  String?                      // null until onboarding complete
+  tag       String   @unique             // 7-char globally unique ID: 6 digits + 1 capital letter (e.g. 483921A)
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -22,7 +22,6 @@ model User {
   sentMessages  Message[]    @relation("MessageSender")
   chatMembers   ChatMember[]
 
-  @@unique([username, tag])
   @@index([username])
   @@index([googleId])
 }

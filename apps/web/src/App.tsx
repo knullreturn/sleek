@@ -2,16 +2,14 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage';
 import { ChatPage } from './pages/ChatPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { useAuthStore } from './store/auth.store';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
-
 export default function App() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = !!token && !!user;
+  const needsOnboarding = isAuthenticated && !user?.username;
 
   return (
     <Routes>
@@ -20,11 +18,19 @@ export default function App() {
         element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />}
       />
       <Route
+        path="/onboarding"
+        element={
+          !isAuthenticated ? <Navigate to="/login" replace />
+          : !needsOnboarding ? <Navigate to="/" replace />
+          : <OnboardingPage />
+        }
+      />
+      <Route
         path="/*"
         element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
+          !isAuthenticated ? <Navigate to="/login" replace />
+          : needsOnboarding ? <Navigate to="/onboarding" replace />
+          : <ChatPage />
         }
       />
     </Routes>
