@@ -7,21 +7,22 @@ import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
 import { useMessages } from '../hooks/useData';
 import { getSocket } from '../hooks/useSocket';
-import { Send, Paperclip, Smile } from 'lucide-react';
+import { Send, Paperclip, Smile, X } from 'lucide-react';
 
 // Stable references — prevent new array on every render (causes infinite loop)
 const EMPTY_MESSAGES: any[] = [];
 const EMPTY_TYPING: any[] = [];
 
 interface MessageBubbleProps {
-  message:     any;
-  isOwn:       boolean;
-  showAvatar:  boolean;
-  showSender:  boolean;
+  message:       any;
+  isOwn:         boolean;
+  showAvatar:    boolean;
+  showSender:    boolean;
+  replyTo:       any | null;
   onContextMenu: (e: React.MouseEvent, message: any) => void;
 }
 
-function MessageBubble({ message, isOwn, showAvatar, showSender, onContextMenu }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, showAvatar, showSender, replyTo, onContextMenu }: MessageBubbleProps) {
   return (
     <div className={`msg-row ${isOwn ? 'own' : ''}`}>
       {!isOwn && (
@@ -39,6 +40,8 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, onContextMenu }
         {showSender && !isOwn && (
           <span className="msg-sender-name">{message.sender?.username}</span>
         )}
+        {/* Concept C: floating chip + connector line */}
+        {replyTo && <ReplyChip replyTo={replyTo} isOwn={isOwn} />}
         <div
           className={`msg-bubble ${isOwn ? 'own' : 'other'}`}
           onContextMenu={(e) => { e.preventDefault(); onContextMenu(e, message); }}
@@ -65,7 +68,39 @@ function MessageBubble({ message, isOwn, showAvatar, showSender, onContextMenu }
   );
 }
 
-// Skeleton bubble for loading state
+// ── Reply Chip ─ Concept C ────────────────────────────────────────────────────
+function ReplyChip({ replyTo, isOwn }: { replyTo: any; isOwn: boolean }) {
+  const initial = (replyTo.sender?.username?.[0] ?? '?').toUpperCase();
+  return (
+    <div className={`reply-chip-wrap ${isOwn ? 'own' : ''}`}>
+      <div className="reply-chip">
+        <div className="reply-chip-avatar">{initial}</div>
+        <span className="reply-chip-name">{replyTo.sender?.username}</span>
+        <span className="reply-chip-dot">·</span>
+        <span className="reply-chip-text">{replyTo.content}</span>
+      </div>
+      <div className="reply-chip-line" />
+    </div>
+  );
+}
+
+// ── Reply Bar (above input) ──────────────────────────────────────────────────
+function ReplyBar({ replyTo, onCancel }: { replyTo: any; onCancel: () => void }) {
+  return (
+    <div className="reply-bar">
+      <div className="reply-bar-accent" />
+      <div className="reply-bar-body">
+        <span className="reply-bar-label">Replying to <strong>{replyTo.sender?.username}</strong></span>
+        <span className="reply-bar-preview">{replyTo.content}</span>
+      </div>
+      <button className="icon-btn" onClick={onCancel} title="Cancel reply" aria-label="Cancel reply" style={{ flexShrink: 0 }}>
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────────
 function MessageSkeleton({ own, width }: { own?: boolean; width: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '4px 0', flexDirection: own ? 'row-reverse' : 'row' }}>
@@ -89,7 +124,8 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     .filter((t) => t.userId !== user?.id)
     .map((t) => t.username);
 
-  const [input, setInput] = useState('');
+  const [input,      setInput]      = useState('');
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef   = useRef<HTMLDivElement>(null);
@@ -105,7 +141,9 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   const initialScrollDone = useRef(false);
 
-  // Always scroll to bottom when switching chats
+  // Reset reply + menu when switching chats
+  useEffect(() => { setReplyingTo(null); setContextMenu(null); }, [chatId]);
+
   useEffect(() => {
     initialScrollDone.current = false;
   }, [chatId]);
@@ -141,14 +179,13 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   const handleSend = () => {
     if (!input.trim()) return;
-    sendMessage(input);
+    sendMessage(input, replyingTo?.id);
     setInput('');
-    // reset textarea height
+    setReplyingTo(null);
     if (textareaRef.current) textareaRef.current.style.height = '40px';
     textareaRef.current?.focus();
     sendTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    // always scroll to bottom after sending own message
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
@@ -232,6 +269,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
                     e.preventDefault();
                     setContextMenu({ x: e.clientX, y: e.clientY, message: msg });
                   }}
+                  replyTo={msg.replyTo ?? null}
                 />
               );
             })}
@@ -245,6 +283,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Reply bar above input */}
+      {replyingTo && (
+        <ReplyBar replyTo={replyingTo} onCancel={() => setReplyingTo(null)} />
+      )}
 
       <div className="chat-input-bar">
         <button className="icon-btn" title="Attach file" aria-label="Attach file">
@@ -287,6 +330,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
           isOwn={contextMenu.message.senderId === user?.id}
           content={contextMenu.message.content}
           onClose={() => setContextMenu(null)}
+          onReply={() => {
+            setReplyingTo(contextMenu!.message);
+            setContextMenu(null);
+            textareaRef.current?.focus();
+          }}
         />
       )}
     </>

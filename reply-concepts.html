@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reply UI Concepts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111111;
+      --elevated:  #1a1a1a;
+      --accent:    #7c5cfc;
+      --accent-dim: rgba(124,92,252,0.14);
+      --text:      #f0f0f0;
+      --muted:     #666;
+      --subtle:    #222;
+      --green:     #4ade80;
+      --radius:    14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 48px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .section {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ─── Shared chat canvas ─── */
+    .canvas {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* ─── Message row ─── */
+    .row       { display: flex; align-items: flex-end; gap: 8px; }
+    .row.own   { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--accent-dim);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .bubble-col {
+      display: flex; flex-direction: column;
+      align-items: flex-start; gap: 3px; max-width: 72%;
+    }
+    .row.own .bubble-col { align-items: flex-end; }
+
+    .bubble {
+      padding: 9px 13px;
+      border-radius: var(--radius);
+      font-size: 14px; line-height: 1.55;
+      word-break: break-word;
+    }
+    .bubble.other { background: var(--elevated); color: var(--text); border-bottom-left-radius: 4px; }
+    .bubble.own   { background: var(--accent);   color: #fff;        border-bottom-right-radius: 4px; }
+
+    .time { font-size: 10px; color: var(--muted); padding: 0 2px; }
+
+
+    /* ══════════════════════════════════════════════════
+       CONCEPT A — Quoted block above bubble (Telegram style)
+    ══════════════════════════════════════════════════ */
+    .reply-quote {
+      display: flex;
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      max-width: 100%;
+      cursor: pointer;
+      transition: background 120ms;
+    }
+    .reply-quote:hover { background: rgba(255,255,255,0.07); }
+    .reply-quote .bar {
+      width: 3px; background: var(--accent); flex-shrink: 0;
+    }
+    .reply-quote .body {
+      padding: 6px 10px; min-width: 0;
+    }
+    .reply-quote .sender {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      margin-bottom: 2px;
+    }
+    .reply-quote .preview {
+      font-size: 12px; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 220px;
+    }
+    /* own version — accent on right */
+    .row.own .reply-quote { flex-direction: row-reverse; }
+    .row.own .reply-quote .bar { background: rgba(255,255,255,0.5); }
+    .row.own .reply-quote .sender { color: rgba(255,255,255,0.75); }
+
+
+    /* ══════════════════════════════════════════════════
+       CONCEPT B — Inline top-rounded corner + quote inside bubble
+    ══════════════════════════════════════════════════ */
+    .bubble-with-quote {
+      padding: 0;
+      overflow: hidden;
+      border-radius: var(--radius);
+    }
+    .bubble-with-quote.other { background: var(--elevated); border-bottom-left-radius: 4px; }
+    .bubble-with-quote.own   { background: var(--accent);   border-bottom-right-radius: 4px; }
+
+    .inner-quote {
+      display: flex; gap: 0;
+      margin: 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .inner-quote .bar { width: 3px; background: rgba(255,255,255,0.35); flex-shrink: 0; }
+    .inner-quote.other .bar { background: var(--accent); }
+    .inner-quote .body { padding: 7px 11px; min-width: 0; }
+    .inner-quote .sender { font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .inner-quote.own .sender { color: rgba(255,255,255,0.75); }
+    .inner-quote .preview { font-size: 12px; color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    .inner-quote.other .preview { color: var(--muted); }
+
+    .bubble-text { padding: 9px 13px; font-size: 14px; line-height: 1.55; color: #fff; }
+    .bubble-with-quote.other .bubble-text { color: var(--text); }
+
+
+    /* ══════════════════════════════════════════════════
+       CONCEPT C — Floating reply chip with connecting line
+    ══════════════════════════════════════════════════ */
+    .reply-chain {
+      position: relative;
+      display: flex; flex-direction: column; gap: 0;
+      align-items: flex-start;
+    }
+    .row.own .reply-chain { align-items: flex-end; }
+
+    .reply-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--elevated);
+      border: 1px solid var(--subtle);
+      border-radius: 10px;
+      padding: 5px 10px;
+      font-size: 11.5px; color: var(--muted);
+      margin-bottom: 4px;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 120ms;
+      max-width: 260px;
+    }
+    .reply-chip:hover { border-color: var(--accent); }
+    .reply-chip .chip-avatar {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--accent-dim); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+    }
+    .reply-chip .chip-name { font-weight: 600; color: var(--text); font-size: 11px; white-space: nowrap; }
+    .reply-chip .chip-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+
+    /* The connecting line from chip to bubble */
+    .reply-chip::after {
+      content: '';
+      position: absolute;
+      bottom: -5px; left: 18px;
+      width: 1px; height: 9px;
+      background: var(--subtle);
+    }
+    .row.own .reply-chip::after { left: auto; right: 18px; }
+
+  </style>
+</head>
+<body>
+
+  <!-- ─── CONCEPT A: Quote block above bubble (Telegram-style) ─── -->
+  <div class="section">
+    <h2>Concept A — Quote block above bubble</h2>
+    <div class="canvas">
+
+      <!-- Friend replying to own message -->
+      <div class="row">
+        <div class="avatar">K</div>
+        <div class="bubble-col">
+          <div class="reply-quote">
+            <div class="bar"></div>
+            <div class="body">
+              <div class="sender">You</div>
+              <div class="preview">When are you free this weekend?</div>
+            </div>
+          </div>
+          <div class="bubble other">Saturday works perfectly for me 🙌</div>
+          <span class="time">9:41 AM</span>
+        </div>
+      </div>
+
+      <!-- Own reply to friend -->
+      <div class="row own">
+        <div class="bubble-col">
+          <div class="reply-quote">
+            <div class="bar"></div>
+            <div class="body">
+              <div class="sender">Kiran</div>
+              <div class="preview">Saturday works perfectly for me 🙌</div>
+            </div>
+          </div>
+          <div class="bubble own">Great, let's do 3pm at the usual place</div>
+          <span class="time">9:42 AM</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── CONCEPT B: Quote embedded inside bubble ─── -->
+  <div class="section">
+    <h2>Concept B — Quote inside bubble (Discord-style)</h2>
+    <div class="canvas">
+
+      <div class="row">
+        <div class="avatar">K</div>
+        <div class="bubble-col">
+          <div class="bubble-with-quote other">
+            <div class="inner-quote other">
+              <div class="bar"></div>
+              <div class="body">
+                <div class="sender">You</div>
+                <div class="preview">When are you free this weekend?</div>
+              </div>
+            </div>
+            <div class="bubble-text">Saturday works perfectly for me 🙌</div>
+          </div>
+          <span class="time">9:41 AM</span>
+        </div>
+      </div>
+
+      <div class="row own">
+        <div class="bubble-col">
+          <div class="bubble-with-quote own">
+            <div class="inner-quote own">
+              <div class="bar"></div>
+              <div class="body">
+                <div class="sender">Kiran</div>
+                <div class="preview">Saturday works perfectly for me 🙌</div>
+              </div>
+            </div>
+            <div class="bubble-text">Great, let's do 3pm at the usual place</div>
+          </div>
+          <span class="time">9:42 AM</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── CONCEPT C: Floating chip with line ─── -->
+  <div class="section">
+    <h2>Concept C — Floating reply chip</h2>
+    <div class="canvas">
+
+      <div class="row">
+        <div class="avatar">K</div>
+        <div class="bubble-col">
+          <div class="reply-chain">
+            <div class="reply-chip">
+              <div class="chip-avatar">Y</div>
+              <span class="chip-name">You &nbsp;·&nbsp;</span>
+              <span class="chip-text">When are you free this weekend?</span>
+            </div>
+            <div class="bubble other">Saturday works perfectly for me 🙌</div>
+          </div>
+          <span class="time">9:41 AM</span>
+        </div>
+      </div>
+
+      <div class="row own">
+        <div class="bubble-col">
+          <div class="reply-chain">
+            <div class="reply-chip">
+              <div class="chip-avatar">K</div>
+              <span class="chip-name">Kiran &nbsp;·&nbsp;</span>
+              <span class="chip-text">Saturday works perfectly for me 🙌</span>
+            </div>
+            <div class="bubble own">Great, let's do 3pm at the usual place</div>
+          </div>
+          <span class="time">9:42 AM</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

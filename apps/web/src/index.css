@@ -980,3 +980,93 @@ textarea {
   background: rgba(74, 222, 128, 0.08) !important;
   pointer-events: none;
 }
+
+/* -- Reply Chip (Concept C) --------------------------------------------------- */
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+
+.reply-chip-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  animation: chipIn 200ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.reply-chip-wrap.own { align-items: flex-end; }
+
+.reply-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 4px 10px 4px 5px;
+  cursor: default;
+  max-width: 260px;
+  overflow: hidden;
+  transition: border-color 150ms;
+}
+.reply-chip:hover { border-color: var(--accent); }
+
+.reply-chip-avatar {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.reply-chip-name {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-primary); white-space: nowrap;
+}
+.reply-chip-dot {
+  font-size: 11px; color: var(--text-muted);
+}
+.reply-chip-text {
+  font-size: 11px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Connecting line from chip to bubble */
+.reply-chip-line {
+  width: 1px; height: 8px;
+  background: var(--border-subtle);
+  margin-left: 14px;
+}
+.reply-chip-wrap.own .reply-chip-line { margin-left: 0; margin-right: 14px; }
+
+/* -- Reply Bar (above input) -------------------------------------------------- */
+@keyframes replyBarIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-subtle);
+  animation: replyBarIn 180ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.reply-bar-accent {
+  width: 3px; height: 34px; border-radius: 3px;
+  background: var(--accent); flex-shrink: 0;
+}
+.reply-bar-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.reply-bar-label {
+  font-size: 11px; color: var(--text-muted);
+}
+.reply-bar-label strong { color: var(--accent); font-weight: 700; }
+.reply-bar-preview {
+  font-size: 12px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
