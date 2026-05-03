@@ -30,15 +30,30 @@ export function ChatPage() {
   return (
     <div className="app-layout">
       <header className="app-header" role="banner">
-        {/* Left cell — logo + toggle button, aligned with sidebar+chatlist */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 'calc(var(--sidebar-width) + var(--chatlist-width))', paddingLeft: 16 }}>
+        {/* Left cell — shrinks/grows with the chat list panel */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16,
+          minWidth: chatListOpen
+            ? 'calc(var(--sidebar-width) + var(--chatlist-width))'
+            : 'var(--sidebar-width)',
+          transition: 'min-width 220ms cubic-bezier(0.4,0,0.2,1)',
+          overflow: 'hidden',
+        }}>
           <div className="app-logo">
-            <img
-              src="/sleek_logo.png"
-              alt="SLEEK"
-              style={{ width: 28, height: 28, objectFit: 'contain' }}
-            />
-            <span className="app-logo-name">SLEEK</span>
+            <img src="/sleek_logo.png" alt="SLEEK" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+            {/* Brand name fades out when chatlist is collapsed */}
+            <span
+              className="app-logo-name"
+              style={{
+                opacity: chatListOpen ? 1 : 0,
+                maxWidth: chatListOpen ? 80 : 0,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                transition: 'opacity 180ms ease, max-width 220ms cubic-bezier(0.4,0,0.2,1)',
+              }}
+            >
+              SLEEK
+            </span>
           </div>
           <button
             id="toggle-chatlist-btn"
@@ -46,7 +61,7 @@ export function ChatPage() {
             onClick={toggleChatList}
             title={chatListOpen ? 'Hide sidebar' : 'Show sidebar'}
             aria-label={chatListOpen ? 'Hide sidebar' : 'Show sidebar'}
-            style={{ marginLeft: 4 }}
+            style={{ marginLeft: 4, flexShrink: 0 }}
           >
             {chatListOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
           </button>
@@ -61,7 +76,7 @@ export function ChatPage() {
                 <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {peer.username}
                 </div>
-                <div style={{ fontSize: 11, color: isOnline ? 'var(--online)' : 'var(--text-muted)', lineHeight: 1 }}>
+                <div style={{ fontSize: 11, color: isOnline ? 'var(--online)' : 'var(--text-muted)', lineHeight: 1, marginTop: 4 }}>
                   {isOnline ? 'Online' : 'Offline'}
                 </div>
               </div>
