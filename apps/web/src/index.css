@@ -1387,3 +1387,20 @@ button.reply-chip:active { transform: scale(0.97); }
   outline: 1.5px solid rgba(124,92,252,0.45);
   outline-offset: 1px;
 }
+
+/* -- Message meta row (timestamp + edited tag) ------------------------------- */
+.msg-meta-row {
+  float: right;
+  font-size: 10px;
+  opacity: 0.55;
+  margin-left: 8px;
+  margin-top: 4px;
+  position: relative;
+  top: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.msg-meta-time { line-height: 1; }
