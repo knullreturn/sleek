@@ -51,7 +51,7 @@ export function Sidebar() {
             title="Profile"
             style={{ padding: 0, width: 44, height: 44 }}
           >
-            <Avatar src={user.avatarUrl} username={user.username} size="sm" />
+            <Avatar src={user.avatarUrl} username={user.username ?? ''} size="sm" />
             <span className="tooltip">Profile</span>
           </button>
         )}

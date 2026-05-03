@@ -89,6 +89,10 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const activeChat = chats.find((c) => c.id === chatId);
   const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
 
+  const typingNames = typingMap
+    .filter((t) => t.userId !== user?.id)
+    .map((t) => t.username);
+
   const [input, setInput] = useState('');
   const [typingTimeout, setTypingTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
