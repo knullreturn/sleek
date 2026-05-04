@@ -13,9 +13,10 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   googleId  String   @unique
-  username  String?  @unique             // Fix #1: unique once set, null is allowed multiple times in Postgres
-  tag       String   @unique             // 7-char globally unique ID
+  username  String?  @unique
+  tag       String   @unique
   avatarUrl String?
+  fcmToken  String?                        // FCM device token for push notifications
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

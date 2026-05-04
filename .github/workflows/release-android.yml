@@ -38,6 +38,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x apps/android/gradlew
 
+      - name: Inject google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > apps/android/app/google-services.json
+
       - name: Build release APK
         working-directory: apps/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace

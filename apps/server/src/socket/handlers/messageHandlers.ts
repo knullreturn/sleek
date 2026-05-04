@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import { AuthSocket, memberSelect, messageInclude, serializeMessage } from '../socketTypes';
+import { sendFcmPush } from '../../lib/firebase';
 
 /**
  * Registers send / edit / delete / pin / unpin handlers.
@@ -68,6 +69,31 @@ export function registerMessageHandlers(
       }
 
       io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
+
+      // ── FCM push for offline members ───────────────────────────────────────
+      // Find members who have no active sockets (app is killed) and have an FCM token
+      const senderName = message.sender?.username ?? 'Someone';
+      const chatMembers = await prisma.chatMember.findMany({
+        where:   { chatId },
+        include: { user: { select: { id: true, username: true, fcmToken: true } } },
+      });
+      const offlineTokens: string[] = [];
+      for (const cm of chatMembers) {
+        if (cm.user.id === socket.userId) continue;                // skip sender
+        const activeSockets = await io.in(`user:${cm.user.id}`).fetchSockets();
+        if (activeSockets.length === 0 && cm.user.fcmToken) {     // truly offline
+          offlineTokens.push(cm.user.fcmToken);
+        }
+      }
+      if (offlineTokens.length > 0) {
+        await sendFcmPush(offlineTokens, {
+          senderName,
+          content:  message.deletedAt ? 'Deleted a message' : trimmed,
+          chatId,
+          chatName: senderName,
+        });
+      }
+
     } catch (err) {
       console.error('send_message error:', err);
       socket.emit('error', { message: 'Failed to send message' });

@@ -36,4 +36,8 @@ interface ApiService {
 
     @POST("chats")
     suspend fun createDm(@Body body: Map<String, String>): Response<Chat>
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    @POST("users/fcm-token")
+    suspend fun saveFcmToken(@Body body: Map<String, String>): Response<Unit>
 }

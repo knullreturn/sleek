@@ -89,4 +89,15 @@ export async function userRoutes(app: FastifyInstance) {
     if (!user) return reply.status(404).send({ error: 'Not Found', message: 'User not found', statusCode: 404 });
     return reply.send(fmt(user));
   });
+
+  // POST /api/users/fcm-token — save/update device FCM token for push notifications
+  app.post('/fcm-token', { preHandler: authenticate }, async (request, reply) => {
+    const me = (request as any).user;
+    const { token } = request.body as { token?: string };
+    if (!token || typeof token !== 'string') {
+      return reply.status(400).send({ error: 'token is required' });
+    }
+    await prisma.user.update({ where: { id: me.id }, data: { fcmToken: token } });
+    return reply.status(204).send();
+  });
 }
