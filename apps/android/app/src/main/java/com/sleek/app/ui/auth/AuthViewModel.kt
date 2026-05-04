@@ -8,6 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.gms.tasks.Tasks
+import com.google.firebase.messaging.FirebaseMessaging
 import com.sleek.app.BuildConfig
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.model.GoogleAuthRequest
@@ -67,6 +69,8 @@ class AuthViewModel @Inject constructor(
                     val body = res.body()!!
                     tokenDataStore.save(body.token, body.user.id, body.user.username)
                     socketManager.connect(body.token)
+                    // Save FCM token now that we have an auth token
+                    saveFcmTokenSilently()
                     _state.value = if (body.user.needsOnboarding) AuthUiState.NeedsOnboard
                                    else AuthUiState.Success
                 } else {
@@ -90,6 +94,7 @@ class AuthViewModel @Inject constructor(
                 if (res.isSuccessful) {
                     val body = res.body()!!
                     tokenDataStore.save(body.token, body.user.id, body.user.username)
+                    saveFcmTokenSilently()
                     _state.value = AuthUiState.Success
                 } else {
                     val msg = res.errorBody()?.string()?.let {
@@ -104,4 +109,17 @@ class AuthViewModel @Inject constructor(
     }
 
     fun resetState() { _state.value = AuthUiState.Idle }
+
+    /** Gets the current FCM token and saves it to the backend silently. */
+    private fun saveFcmTokenSilently() {
+        viewModelScope.launch {
+            try {
+                val fcmToken = Tasks.await(FirebaseMessaging.getInstance().token)
+                apiService.saveFcmToken(mapOf("token" to fcmToken))
+                android.util.Log.d("FCM", "Token saved after login: $fcmToken")
+            } catch (e: Exception) {
+                android.util.Log.e("FCM", "Failed to save FCM token: ${e.message}")
+            }
+        }
+    }
 }

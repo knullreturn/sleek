@@ -55,6 +55,10 @@ class ChatListViewModel @Inject constructor(
 
     fun clearUnread(chatId: String) {
         _unreadCounts.update { it - chatId }
+        // Persist on backend so unread count survives app restarts
+        viewModelScope.launch {
+            try { apiService.markChatRead(chatId) } catch (_: Exception) {}
+        }
     }
 
     // Filtered chats based on search query
@@ -102,8 +106,11 @@ class ChatListViewModel @Inject constructor(
                 if (res.isSuccessful) {
                     val chats = res.body() ?: emptyList()
                     _chats.value = chats
-                    // ── Prefetch top 5 chats in background ──────────────────────
-                    // Loads messages into Room so first open is instant (no skeleton)
+                    // ── Init unread counts from server ──────────────────────────
+                    _unreadCounts.value = chats
+                        .filter { it.unreadCount > 0 }
+                        .associate { it.id to it.unreadCount }
+                    // Prefetch top 5 chats in background
                     prefetchTopChats(chats.take(5))
                 } else {
                     _error.value = "Failed to load chats (${res.code()})"
@@ -144,8 +151,9 @@ class ChatListViewModel @Inject constructor(
                         val myUserId = _me.value?.id
                         viewModelScope.launch { messageRepository.upsert(msg) }
 
-                        // Increment unread for peer messages
-                        if (msg.senderId != myUserId) {
+                        // Increment unread only if user is NOT currently in that chat
+                        if (msg.senderId != myUserId &&
+                            msg.chatId != com.sleek.app.notification.NotificationHelper.activeChatId) {
                             _unreadCounts.update { counts ->
                                 counts + (msg.chatId to ((counts[msg.chatId] ?: 0) + 1))
                             }

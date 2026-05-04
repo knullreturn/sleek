@@ -40,12 +40,13 @@ model Chat {
 }
 
 model ChatMember {
-  id       String   @id @default(cuid())
-  chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  chatId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   String
-  joinedAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  joinedAt   DateTime @default(now())
+  lastReadAt DateTime @default(now())
 
   @@unique([chatId, userId])
   @@index([userId])

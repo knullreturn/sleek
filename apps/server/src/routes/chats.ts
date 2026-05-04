@@ -44,19 +44,46 @@ export async function chatRoutes(app: FastifyInstance) {
           include: {
             members: { include: { user: { select: memberSelect } } },
             messages: { orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: memberSelect } } },
+            _count: { select: { messages: true } },
           },
         },
       },
       orderBy: { chat: { updatedAt: 'desc' } },
     });
 
-    return reply.send(chatMembers.map(({ chat }) => ({
+    // Compute unread counts in parallel
+    const withUnread = await Promise.all(
+      chatMembers.map(async (cm) => {
+        const unreadCount = await prisma.message.count({
+          where: {
+            chatId:    cm.chatId,
+            senderId:  { not: me.id },
+            createdAt: { gt: cm.lastReadAt },
+          },
+        });
+        return { chat: cm.chat, unreadCount };
+      }),
+    );
+
+    return reply.send(withUnread.map(({ chat, unreadCount }) => ({
       id: chat.id,
       type: chat.type,
       createdAt: chat.createdAt.toISOString(),
       members: chat.members.map((m) => fmtUser(m.user)),
       lastMessage: chat.messages[0] ? serializeMessage(chat.messages[0]) : null,
+      unreadCount,
     })));
+  });
+
+  // PUT /api/chats/:id/read — mark all messages as read
+  app.put('/:id/read', { preHandler: authenticate }, async (request, reply) => {
+    const me     = (request as any).user;
+    const chatId = (request.params as any).id;
+    await prisma.chatMember.updateMany({
+      where: { chatId, userId: me.id },
+      data:  { lastReadAt: new Date() },
+    });
+    return reply.send({ ok: true });
   });
 
   // POST /api/chats

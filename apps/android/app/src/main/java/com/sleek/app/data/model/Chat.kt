@@ -6,4 +6,5 @@ data class Chat(
     val members:     List<User>,
     val lastMessage: Message?,
     val createdAt:   String,
+    val unreadCount: Int = 0,
 )
