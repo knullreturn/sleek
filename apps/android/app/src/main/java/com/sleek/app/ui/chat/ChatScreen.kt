@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -73,6 +74,29 @@ fun ChatScreen(
     LaunchedEffect(state.messages.size) {
         if (initialScrollDone.value && state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
+        }
+    }    // ── Content fades in AFTER the nav slide lands (160ms delay) ─────────────
+    // This prevents the abrupt "content already there during animation" feel
+    var contentVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(160)
+        contentVisible = true
+    }
+
+    // ── Keyboard open → scroll to bottom ──────────────────────────────────────
+    val density   = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > 0 && state.messages.isNotEmpty()) {
+            kotlinx.coroutines.delay(50)   // let layout shift settle first
+            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+        }
+    }
+
+    // ── Typing indicator appears → scroll to show it ──────────────────────────
+    LaunchedEffect(state.typingUsers.isNotEmpty()) {
+        if (state.typingUsers.isNotEmpty()) {
+            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
         }
     }
 
@@ -245,8 +269,13 @@ fun ChatScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Fade in AFTER nav transition settles — clean slide then content appears
+            androidx.compose.animation.AnimatedVisibility(
+                visible = contentVisible,
+                enter   = fadeIn(tween(240)),
+            ) {
             if (state.isLoading) {
-                // Skeleton bubbles (only on very first load — cache skips this)
+                // Skeleton (first-time only)
                 Column(
                     modifier = Modifier.fillMaxSize().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -315,7 +344,7 @@ fun ChatScreen(
                             }
                         }
                 }
-            }
+            }   // end AnimatedVisibility
         }
     }
 }
