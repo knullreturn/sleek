@@ -22,20 +22,16 @@ fun TypingIndicator(
     names:    List<String>,   // kept for API compat; content ignored
     modifier: Modifier = Modifier,
 ) {
-    // Outer row mirrors incoming MessageBubble layout:
-    //   12.dp start padding  +  avatar placeholder (40dp)  +  8.dp gap
+    // Outer Row mirrors incoming MessageBubble exactly:
+    // MessageBubble uses padding(start = 8.dp) + Arrangement.Start for other messages
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, top = 2.dp, bottom = 8.dp, end = 72.dp),
+            .padding(start = 8.dp, top = 2.dp, bottom = 8.dp, end = 72.dp),
         verticalAlignment     = Alignment.Bottom,
         horizontalArrangement = Arrangement.Start,
     ) {
-        // Avatar-width spacer so bubble sits in the same column as incoming text
-        Spacer(Modifier.size(40.dp))
-        Spacer(Modifier.width(8.dp))
-
-        // Bubble
+        // Bubble — no avatar spacer, matches the message column directly
         Box(
             modifier = Modifier
                 .clip(BubbleShapeOther)
