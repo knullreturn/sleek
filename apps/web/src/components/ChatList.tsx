@@ -125,10 +125,12 @@ export function ChatList() {
 
         {/* Chat items */}
         {filteredChats.map((chat) => {
-          const peer     = getDmPeer(chat, user?.id || '');
-          const isActive = chat.id === activeChatId;
-          const isOnline = peer ? onlineUsers.has(peer.id) : false;
-          const lastMsg  = chat.lastMessage;
+          const peer        = getDmPeer(chat, user?.id || '');
+          const isActive    = chat.id === activeChatId;
+          const isOnline    = peer ? onlineUsers.has(peer.id) : false;
+          const lastMsg     = chat.lastMessage;
+          const unread      = useChatStore.getState().unreadCounts[chat.id] || 0;
+          const hasUnread   = unread > 0 && lastMsg?.senderId !== user?.id;
 
           return (
             <div
@@ -141,18 +143,43 @@ export function ChatList() {
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && setActiveChatId(chat.id)}
               aria-selected={isActive}
-              style={{ position: 'relative', zIndex: 1 }}   /* sits above the flying pill */
+              style={{ position: 'relative', zIndex: 1 }}
             >
               <Avatar src={peer?.avatarUrl} username={peer?.username || '?'} size="md" online={isOnline} />
               <div className="chat-item-meta">
-                <div className="chat-item-name">{peer?.username || 'Unknown'}</div>
-                <div className="chat-item-preview">
+                <div className="chat-item-name" style={hasUnread ? { color: 'var(--text-primary)', fontWeight: 600 } : {}}>
+                  {peer?.username || 'Unknown'}
+                </div>
+                <div className="chat-item-preview" style={hasUnread ? { color: 'var(--accent)', fontWeight: 500 } : {}}>
                   {lastMsg
                     ? lastMsg.senderId === user?.id ? `You: ${lastMsg.content}` : lastMsg.content
                     : 'No messages yet'}
                 </div>
               </div>
-              {lastMsg && <span className="chat-item-time">{formatChatTime(lastMsg.createdAt)}</span>}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                {lastMsg && (
+                  <span className="chat-item-time" style={hasUnread ? { color: 'var(--accent)' } : {}}>
+                    {formatChatTime(lastMsg.createdAt)}
+                  </span>
+                )}
+                {hasUnread && (
+                  <div style={{
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    borderRadius: '50%',
+                    width: 18,
+                    height: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}>
+                    {unread > 99 ? '99+' : unread}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

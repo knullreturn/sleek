@@ -36,18 +36,21 @@ interface ChatState {
   activeChatId: string | null;
   typing: TypingState;
   onlineUsers: Set<string>;
-  seenUpTo: Record<string, string | null>;  // chatId → last messageId seen by peer
+  seenUpTo: Record<string, string | null>;
+  unreadCounts: Record<string, number>;
 
-  setChats:       (chats: Chat[]) => void;
-  upsertChat:     (chat: Chat) => void;
-  setActiveChatId:(id: string | null) => void;
-  setMessages:    (chatId: string, messages: Message[]) => void;
-  prependMessages:(chatId: string, messages: Message[]) => void;
-  addMessage:     (message: Message) => void;
-  updateMessage:  (chatId: string, patch: Partial<Message> & { id: string }) => void;
-  setTyping:      (chatId: string, userId: string, username: string, isTyping: boolean) => void;
-  setUserOnline:  (userId: string, online: boolean) => void;
-  setSeenUpTo:    (chatId: string, messageId: string | null) => void;
+  setChats:        (chats: Chat[]) => void;
+  upsertChat:      (chat: Chat) => void;
+  setActiveChatId: (id: string | null) => void;
+  setMessages:     (chatId: string, messages: Message[]) => void;
+  prependMessages: (chatId: string, messages: Message[]) => void;
+  addMessage:      (message: Message) => void;
+  updateMessage:   (chatId: string, patch: Partial<Message> & { id: string }) => void;
+  setTyping:       (chatId: string, userId: string, username: string, isTyping: boolean) => void;
+  setUserOnline:   (userId: string, online: boolean) => void;
+  setSeenUpTo:     (chatId: string, messageId: string | null) => void;
+  incrementUnread: (chatId: string) => void;
+  clearUnread:     (chatId: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -57,6 +60,7 @@ export const useChatStore = create<ChatState>((set) => ({
   typing: {},
   onlineUsers: new Set(),
   seenUpTo: {},
+  unreadCounts: {},
 
   setChats: (chats) => set({ chats }),
 
@@ -71,7 +75,11 @@ export const useChatStore = create<ChatState>((set) => ({
       return { chats: [chat, ...state.chats] };
     }),
 
-  setActiveChatId: (id) => set({ activeChatId: id }),
+  setActiveChatId: (id) => set((state) => ({
+    activeChatId: id,
+    // Auto-clear unread when opening a chat
+    unreadCounts: id ? { ...state.unreadCounts, [id]: 0 } : state.unreadCounts,
+  })),
 
   setMessages: (chatId, messages) =>
     set((state) => ({ messages: { ...state.messages, [chatId]: messages } })),
@@ -141,4 +149,12 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setSeenUpTo: (chatId, messageId) =>
     set((state) => ({ seenUpTo: { ...state.seenUpTo, [chatId]: messageId } })),
+
+  incrementUnread: (chatId) =>
+    set((state) => ({
+      unreadCounts: { ...state.unreadCounts, [chatId]: (state.unreadCounts[chatId] || 0) + 1 },
+    })),
+
+  clearUnread: (chatId) =>
+    set((state) => ({ unreadCounts: { ...state.unreadCounts, [chatId]: 0 } })),
 }));

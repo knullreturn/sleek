@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
@@ -23,7 +23,7 @@ export function useSocket() {
     });
 
     socket.on('connect', () => {
-      console.log('🔌 Socket connected');
+      console.log('ðŸ”Œ Socket connected');
       if (activeChatRef.current) {
         socket?.emit('join_chat', activeChatRef.current);
       }
@@ -41,15 +41,20 @@ export function useSocket() {
       if (chat) {
         useChatStore.getState().upsertChat({ ...chat, lastMessage: message });
       }
-      // If chat not in list yet, the server will emit new_chat — handled below
+      // If chat not in list yet, the server will emit new_chat â€” handled below
 
-      // Peer replied → clear “seen” green on our previous messages
+      // Increment unread for peer messages when that chat isn't open
+      if (message.senderId !== myId && message.chatId !== activeChatRef.current) {
+        state.incrementUnread(message.chatId);
+      }
+
+      // Peer replied â†’ clear â€œseenâ€ green on our previous messages
       if (message.senderId !== myId) {
         state.setSeenUpTo(message.chatId, null);
       }
     });
 
-    // Brand-new chat from someone — server emits this when a socket is joined
+    // Brand-new chat from someone â€” server emits this when a socket is joined
     // to a room it wasn't in before (first message from a new person)
     socket.on('new_chat', ({ chat }: { chat: any }) => {
       useChatStore.getState().upsertChat(chat);
