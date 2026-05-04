@@ -25,4 +25,8 @@ data class ReplyTo(
     val sender:    User,
 )
 
-data class MessagesResponse(val messages: List<Message>)
+data class MessagesResponse(
+    val messages:   List<Message>,
+    val hasMore:    Boolean = false,
+    val nextCursor: String? = null,
+)

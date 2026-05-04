@@ -22,18 +22,18 @@ interface ApiService {
 
     // ── Chats ─────────────────────────────────────────────────────────────────
     @GET("chats")
-    suspend fun getChats(): Response<ChatsResponse>
+    suspend fun getChats(): Response<List<Chat>>
 
-    @GET("chats/{chatId}/messages")
-    suspend fun getMessages(@Path("chatId") chatId: String): Response<MessagesResponse>
+    @GET("chats/{id}/messages")
+    suspend fun getMessages(@Path("id") chatId: String): Response<MessagesResponse>
 
-    @GET("chats/{chatId}/pins")
-    suspend fun getPinnedMessages(@Path("chatId") chatId: String): Response<MessagesResponse>
+    @GET("chats/{id}/pins")
+    suspend fun getPinnedMessages(@Path("id") chatId: String): Response<MessagesResponse>
 
-    // ── Search ────────────────────────────────────────────────────────────────
+    // ── Search & DM creation ──────────────────────────────────────────────────
     @GET("users/search")
     suspend fun searchUsers(@Query("q") query: String): Response<List<User>>
 
-    @POST("chats/dm/{userId}")
-    suspend fun createDm(@Path("userId") userId: String): Response<Chat>
+    @POST("chats")
+    suspend fun createDm(@Body body: Map<String, String>): Response<Chat>
 }

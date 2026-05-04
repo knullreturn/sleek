@@ -20,11 +20,14 @@ class ChatListViewModel @Inject constructor(
     private val socketManager:  SocketManager,
 ) : ViewModel() {
 
-    private val _chats   = MutableStateFlow<List<Chat>>(emptyList())
+    private val _chats     = MutableStateFlow<List<Chat>>(emptyList())
     val chats = _chats.asStateFlow()
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading = _isLoading.asStateFlow()
+
+    private val _error     = MutableStateFlow<String?>(null)
+    val error = _error.asStateFlow()
 
     val userId: Flow<String?> = tokenDataStore.userId
 
@@ -33,15 +36,21 @@ class ChatListViewModel @Inject constructor(
         observeSocket()
     }
 
-    private fun loadChats() {
+    fun loadChats() {
         viewModelScope.launch {
             _isLoading.value = true
+            _error.value     = null
             try {
                 val res = apiService.getChats()
                 if (res.isSuccessful) {
-                    _chats.value = res.body()?.chats ?: emptyList()
+                    // Backend returns a plain array — body() is directly List<Chat>
+                    _chats.value = res.body() ?: emptyList()
+                } else {
+                    _error.value = "Failed to load chats (${res.code()})"
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                _error.value = "Network error: ${e.message}"
+            }
             _isLoading.value = false
         }
     }
@@ -50,25 +59,21 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             socketManager.events.collect { event ->
                 when (event) {
-                    is SocketEvent.MessageReceived -> updateLastMessage(event.message.chatId, event.message.content)
+                    is SocketEvent.MessageReceived -> {
+                        _chats.update { list ->
+                            list.map { chat ->
+                                if (chat.id == event.message.chatId)
+                                    chat.copy(lastMessage = event.message)
+                                else chat
+                            }.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
+                        }
+                    }
                     else -> {}
                 }
             }
         }
     }
 
-    private fun updateLastMessage(chatId: String, content: String) {
-        _chats.update { list ->
-            list.map { chat ->
-                if (chat.id == chatId) chat.copy(lastMessage = chat.lastMessage?.copy(content = content))
-                else chat
-            }.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
-        }
-    }
-
-    // Get the other person in a DM
     fun getDmPeer(chat: Chat, myId: String): User? =
         chat.members.firstOrNull { it.id != myId }
-
-    fun refresh() = loadChats()
 }
