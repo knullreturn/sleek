@@ -23,18 +23,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── Generate debug keystore ───────────────────────────────────────────────
-      # Our build.gradle.kts uses ~/.android/debug.keystore for signing.
-      # This step guarantees the keystore exists on the CI runner.
-      - name: Generate debug keystore
+      # ── Restore YOUR debug keystore from GitHub Secrets ──────────────────────
+      # This ensures the SHA-1 fingerprint is always consistent (E2:A2:D1:...)
+      # which must match what is registered in Google Cloud Console for Sign-In to work.
+      - name: Restore keystore
         run: |
           mkdir -p ~/.android
-          keytool -genkey -v \
-            -keystore ~/.android/debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
 
       # ── Gradle cache (speeds up subsequent builds significantly) ──────────────
       - name: Cache Gradle packages
