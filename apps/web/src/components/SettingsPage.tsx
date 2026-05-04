@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, User, Palette, LogOut, ArrowLeft, Camera } from 'lucide-react';
+import { X, User, Palette, LogOut, ArrowLeft, Camera, Download, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../store/auth.store';
 import { useUIStore } from '../store/ui.store';
 import { Avatar } from './Avatar';
 import { AvatarCropModal } from './AvatarCropModal';
 import api from '../lib/api';
 
-type SettingsSection = 'account' | 'appearance';
+type SettingsSection = 'account' | 'appearance' | 'downloads';
 
 // ── Account section ────────────────────────────────────────────────────────────
 function AccountSection() {
@@ -126,6 +126,98 @@ function AccountSection() {
   );
 }
 
+// ── Downloads section ──────────────────────────────────────────────────────────────
+// GitHub release URL — update path when a new APK is uploaded
+const APK_URL = 'https://github.com/knullreturn/sleek/releases/download/v1.0.0/sleek-v1.0.0.apk';
+
+function DownloadsSection() {
+  return (
+    <div className="settings-section">
+      <h2 className="settings-section-title">Downloads</h2>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.6 }}>
+        Get the native SLEEK experience on your Android device. Faster, lighter, with instant notifications.
+      </p>
+
+      {/* Android card */}
+      <div style={{
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+      }}>
+        {/* Android icon */}
+        <div style={{
+          width: 56, height: 56, borderRadius: 16,
+          background: 'linear-gradient(135deg, #3ddc84 0%, #2bb870 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, boxShadow: '0 4px 16px rgba(61,220,132,0.3)',
+        }}>
+          <Smartphone size={28} color="#fff" />
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>SLEEK for Android</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+            Version 1.0.0 &nbsp;·&nbsp; Android 8.0+
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+            Room-powered · Instant opens · WhatsApp-speed
+          </div>
+        </div>
+
+        {/* Download button */}
+        <a
+          href={APK_URL}
+          download
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px', borderRadius: 'var(--radius-md)',
+            background: 'var(--accent)', color: '#fff',
+            fontSize: 14, fontWeight: 600, textDecoration: 'none',
+            transition: 'opacity 150ms', flexShrink: 0,
+            boxShadow: '0 2px 12px rgba(var(--accent-rgb), 0.35)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+        >
+          <Download size={16} />
+          Download APK
+        </a>
+      </div>
+
+      {/* Install instructions */}
+      <div style={{
+        marginTop: 20,
+        background: 'var(--bg-input)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 'var(--radius-md)',
+        padding: '16px 20px',
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>How to install</div>
+        {[
+          ['1', 'Tap Download APK above'],
+          ['2', 'Open the downloaded file on your phone'],
+          ['3', 'Allow “Install unknown apps” if prompted'],
+          ['4', 'Tap Install — done!'],
+        ].map(([n, text]) => (
+          <div key={n} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
+            <div style={{
+              width: 20, height: 20, borderRadius: '50%', background: 'var(--accent-dim)',
+              color: 'var(--accent)', fontSize: 11, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>{n}</div>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Appearance section ─────────────────────────────────────────────────────────
 function AppearanceSection() {
   const { theme, toggleTheme } = useUIStore();
@@ -178,6 +270,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
   const navItems: { key: SettingsSection; label: string; icon: React.ReactNode }[] = [
     { key: 'account',    label: 'Account',    icon: <User size={16} /> },
     { key: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
+    { key: 'downloads',  label: 'Downloads',  icon: <Download size={16} /> },
   ];
 
   return (
@@ -214,6 +307,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
         </button>
         {section === 'account'    && <AccountSection />}
         {section === 'appearance' && <AppearanceSection />}
+        {section === 'downloads'  && <DownloadsSection />}
       </main>
     </div>
   );
