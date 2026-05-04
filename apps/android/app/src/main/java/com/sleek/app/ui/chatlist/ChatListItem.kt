@@ -23,12 +23,15 @@ import java.util.*
 
 @Composable
 internal fun ChatListItem(
-    chat:    Chat,
-    peer:    User?,
-    myId:    String?,
-    onClick: () -> Unit,
+    chat:        Chat,
+    peer:        User?,
+    myId:        String?,
+    unreadCount: Int     = 0,
+    onClick:     () -> Unit,
 ) {
     val isLastMsgOwn = chat.lastMessage?.senderId == myId
+    val hasUnread    = unreadCount > 0 && !isLastMsgOwn
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -64,16 +67,43 @@ internal fun ChatListItem(
             ) {
                 Text(
                     text     = peer?.username ?: "Unknown",
-                    style    = MaterialTheme.typography.titleMedium,
+                    style    = if (hasUnread)
+                                   MaterialTheme.typography.titleMedium.copy(color = TextPrimary)
+                               else MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text     = chat.lastMessage?.createdAt?.let { formatChatTime(it) } ?: "",
-                    style    = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text     = chat.lastMessage?.createdAt?.let { formatChatTime(it) } ?: "",
+                        style    = MaterialTheme.typography.labelSmall.copy(
+                            color = if (hasUnread) Accent else TextMuted,
+                        ),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                    // ── Unread badge ──────────────────────────────────────────
+                    if (hasUnread) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Accent),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text  = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color    = TextPrimary,
+                                    fontSize = 10.sp,
+                                ),
+                            )
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(2.dp))
             Row(
@@ -90,7 +120,11 @@ internal fun ChatListItem(
                     style    = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color    = if (chat.lastMessage?.deletedAt != null) TextMuted else TextSecondary,
+                    color    = when {
+                        hasUnread                            -> Accent       // purple for unread
+                        chat.lastMessage?.deletedAt != null -> TextMuted
+                        else                                 -> TextSecondary
+                    },
                 )
             }
         }

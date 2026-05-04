@@ -47,6 +47,14 @@ class ChatListViewModel @Inject constructor(
     val showNewDm    = _showNewDm.asStateFlow()
     val userId: Flow<String?> = tokenDataStore.userId
 
+    // Unread counts — keyed by chatId, incremented on peer messages, cleared on open
+    private val _unreadCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val unreadCounts = _unreadCounts.asStateFlow()
+
+    fun clearUnread(chatId: String) {
+        _unreadCounts.update { it - chatId }
+    }
+
     // Filtered chats based on search query
     val chats: StateFlow<List<Chat>> = combine(_chats, _searchQuery) { chats, query ->
         if (query.isBlank()) chats
@@ -127,10 +135,15 @@ class ChatListViewModel @Inject constructor(
                 when (event) {
                     is SocketEvent.MessageReceived -> {
                         val msg = event.message
-                        // ── Always persist to Room (even if chat screen isn't open) ──
-                        // Without this, messages received in background are lost until
-                        // the user pulls-to-refresh or opens the chat.
                         viewModelScope.launch { messageRepository.upsert(msg) }
+
+                        // Increment unread only for messages from peers (not our own)
+                        val myUserId = _me.value?.id
+                        if (msg.senderId != myUserId) {
+                            _unreadCounts.update { counts ->
+                                counts + (msg.chatId to ((counts[msg.chatId] ?: 0) + 1))
+                            }
+                        }
 
                         val chatExists = _chats.value.any { it.id == msg.chatId }
                         if (chatExists) {
@@ -142,7 +155,6 @@ class ChatListViewModel @Inject constructor(
                                 }.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
                             }
                         } else {
-                            // Brand new chat (someone we never talked to) — refresh list
                             loadChats()
                         }
                     }

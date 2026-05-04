@@ -38,8 +38,9 @@ fun ChatListScreen(
     val error       by viewModel.error.collectAsStateWithLifecycle()
     val me          by viewModel.me.collectAsStateWithLifecycle()
     val myId        by viewModel.userId.collectAsStateWithLifecycle(initialValue = null)
-    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    val showNewDm   by viewModel.showNewDm.collectAsStateWithLifecycle()
+    val searchQuery  by viewModel.searchQuery.collectAsStateWithLifecycle()
+    val showNewDm    by viewModel.showNewDm.collectAsStateWithLifecycle()
+    val unreadCounts by viewModel.unreadCounts.collectAsStateWithLifecycle()
 
     if (showNewDm) {
         NewDmSheet(
@@ -176,7 +177,16 @@ fun ChatListScreen(
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(chats, key = { it.id }) { chat ->
                         val peer = myId?.let { viewModel.getDmPeer(chat, it) }
-                        ChatListItem(chat = chat, peer = peer, myId = myId, onClick = { onOpenChat(chat.id, peer?.username ?: "Chat") })
+                        ChatListItem(
+                            chat        = chat,
+                            peer        = peer,
+                            myId        = myId,
+                            unreadCount = unreadCounts[chat.id] ?: 0,
+                            onClick     = {
+                                viewModel.clearUnread(chat.id)
+                                onOpenChat(chat.id, peer?.username ?: "Chat")
+                            },
+                        )
                         HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp, modifier = Modifier.padding(start = 76.dp))
                     }
                 }
