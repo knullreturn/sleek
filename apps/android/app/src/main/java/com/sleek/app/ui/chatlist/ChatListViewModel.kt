@@ -8,6 +8,7 @@ import com.sleek.app.data.model.User
 import com.sleek.app.data.remote.ApiService
 import com.sleek.app.data.remote.SocketEvent
 import com.sleek.app.data.remote.SocketManager
+import com.sleek.app.data.repository.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -17,9 +18,10 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
-    private val apiService:     ApiService,
-    private val tokenDataStore: TokenDataStore,
-    private val socketManager:  SocketManager,
+    private val apiService:        ApiService,
+    private val tokenDataStore:    TokenDataStore,
+    private val socketManager:     SocketManager,
+    private val messageRepository: MessageRepository,   // for prefetch
 ) : ViewModel() {
 
     private val _chats     = MutableStateFlow<List<Chat>>(emptyList())
@@ -84,7 +86,11 @@ class ChatListViewModel @Inject constructor(
             try {
                 val res = apiService.getChats()
                 if (res.isSuccessful) {
-                    _chats.value = res.body() ?: emptyList()
+                    val chats = res.body() ?: emptyList()
+                    _chats.value = chats
+                    // ── Prefetch top 5 chats in background ──────────────────────
+                    // Loads messages into Room so first open is instant (no skeleton)
+                    prefetchTopChats(chats.take(5))
                 } else {
                     _error.value = "Failed to load chats (${res.code()})"
                 }
@@ -92,6 +98,26 @@ class ChatListViewModel @Inject constructor(
                 _error.value = "Network error: ${e.message}"
             }
             _isLoading.value = false
+        }
+    }
+
+    /**
+     * Silently fetch messages for the given chats in parallel.
+     * Writes to Room → mightHaveData() returns true → instant open, zero skeleton.
+     */
+    private fun prefetchTopChats(chats: List<Chat>) {
+        chats.forEach { chat ->
+            viewModelScope.launch {
+                try {
+                    // Skip if already cached — no wasted network calls
+                    if (messageRepository.hasMessages(chat.id)) return@launch
+                    val res = apiService.getMessages(chat.id)
+                    if (res.isSuccessful) {
+                        val msgs = res.body()?.messages ?: return@launch
+                        messageRepository.saveAll(chat.id, msgs)
+                    }
+                } catch (_: Exception) { /* silent — best effort */ }
+            }
         }
     }
 
