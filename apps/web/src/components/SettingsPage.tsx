@@ -127,8 +127,8 @@ function AccountSection() {
 }
 
 // ── Downloads section ──────────────────────────────────────────────────────────────
-// GitHub release URL — update path when a new APK is uploaded
-const APK_URL = 'https://github.com/knullreturn/sleek/releases/download/v1.0.0/sleek-v1.0.0.apk';
+// Always points to the latest release — never needs updating when a new version ships
+const APK_URL = 'https://github.com/knullreturn/sleek/releases/latest/download/sleek.apk';
 
 function DownloadsSection() {
   return (

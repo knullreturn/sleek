@@ -60,13 +60,15 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      # ── Rename APK to match download URL in Settings → Downloads ──────────────
+      # ── Rename APK — versioned for archives, fixed name for "always latest" URL ─
       - name: Rename APK
         run: |
-          mv apps/android/app/build/outputs/apk/release/app-release.apk \
+          cp apps/android/app/build/outputs/apk/release/app-release.apk \
              sleek-${{ steps.version.outputs.VERSION }}.apk
+          cp apps/android/app/build/outputs/apk/release/app-release.apk \
+             sleek.apk
 
-      # ── Create GitHub Release and attach the APK ──────────────────────────────
+      # ── Create GitHub Release and attach both APKs ────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -83,7 +85,9 @@ jobs:
 
             **Requirements:** Android 8.0+ (API 26)
 
-          files: sleek-${{ steps.version.outputs.VERSION }}.apk
+          files: |
+            sleek-${{ steps.version.outputs.VERSION }}.apk
+            sleek.apk
           draft: false
           prerelease: false
         env:
