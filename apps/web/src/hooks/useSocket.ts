@@ -30,11 +30,28 @@ export function useSocket() {
     });
 
     socket.on('receive_message', ({ message }: { message: any }) => {
-      const myId = useAuthStore.getState().user?.id;
-      addMessage(message);
-      // Peer replied → clear the "seen" green on our previous messages
+      const myId   = useAuthStore.getState().user?.id;
+      const state  = useChatStore.getState();
+      const exists = state.chats.some((c) => c.id === message.chatId);
+
+      // Always add the message to the store
+      state.addMessage(message);
+
+      if (!exists) {
+        // Brand new chat from someone new — fetch the chat list silently
+        const tok    = useAuthStore.getState().token;
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        fetch(`${apiUrl}/chats`, {
+          headers: { Authorization: `Bearer ${tok}` },
+        })
+          .then((r) => r.json())
+          .then((chats: any[]) => useChatStore.getState().setChats(chats))
+          .catch(() => {});
+      }
+
+      // Peer replied → clear "seen" green on our previous messages
       if (message.senderId !== myId) {
-        setSeenUpTo(message.chatId, null);
+        state.setSeenUpTo(message.chatId, null);
       }
     });
 

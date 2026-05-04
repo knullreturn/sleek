@@ -100,12 +100,19 @@ class ChatListViewModel @Inject constructor(
             socketManager.events.collect { event ->
                 when (event) {
                     is SocketEvent.MessageReceived -> {
-                        _chats.update { list ->
-                            list.map { chat ->
-                                if (chat.id == event.message.chatId)
-                                    chat.copy(lastMessage = event.message)
-                                else chat
-                            }.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
+                        val chatExists = _chats.value.any { it.id == event.message.chatId }
+                        if (chatExists) {
+                            // Known chat — update lastMessage and re-sort
+                            _chats.update { list ->
+                                list.map { chat ->
+                                    if (chat.id == event.message.chatId)
+                                        chat.copy(lastMessage = event.message)
+                                    else chat
+                                }.sortedByDescending { it.lastMessage?.createdAt ?: it.createdAt }
+                            }
+                        } else {
+                            // Brand new chat from someone new — silent refresh
+                            loadChats()
                         }
                     }
                     else -> {}

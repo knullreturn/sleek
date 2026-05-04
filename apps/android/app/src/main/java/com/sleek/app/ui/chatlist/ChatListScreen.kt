@@ -141,19 +141,19 @@ fun ChatListScreen(
             TextField(
                 value         = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                modifier      = Modifier.weight(1f),
+                modifier      = Modifier.weight(1f).height(46.dp),
                 placeholder   = {
                     Text(
                         "Search conversations…",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 },
                 leadingIcon   = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(17.dp))
                 },
                 trailingIcon  = if (searchQuery.isNotBlank()) {{
                     IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(15.dp))
                     }
                 }} else null,
                 singleLine    = true,
@@ -166,19 +166,19 @@ fun ChatListScreen(
                     focusedIndicatorColor   = androidx.compose.ui.graphics.Color.Transparent,
                     unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape             = RoundedCornerShape(12.dp),
             )
 
-            // "+" new DM button
+            // "+" new DM button — matches reduced height
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(AccentDim)
                     .clickable { viewModel.showNewDm() },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Add, contentDescription = "New chat", tint = Accent)
+                Icon(Icons.Default.Add, contentDescription = "New chat", tint = Accent, modifier = Modifier.size(20.dp))
             }
         }
 

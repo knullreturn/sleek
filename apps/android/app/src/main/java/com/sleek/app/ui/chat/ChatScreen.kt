@@ -75,12 +75,17 @@ fun ChatScreen(
         if (initialScrollDone.value && state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
         }
-    }    // ── Content fades in AFTER the nav slide lands (160ms delay) ─────────────
-    // This prevents the abrupt "content already there during animation" feel
-    var contentVisible by remember { mutableStateOf(false) }
+    }    // ── Content visibility: instant if cached, fade-in only on first open ────
+    // viewModel.state.value is already updated synchronously by remember{init()} above
+    val hasCachedContent = remember { viewModel.state.value.messages.isNotEmpty() }
+    var contentVisible by remember { mutableStateOf(hasCachedContent) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(160)
-        contentVisible = true
+        if (!hasCachedContent) {
+            // First ever open — wait for nav slide, then fade in
+            kotlinx.coroutines.delay(160)
+            contentVisible = true
+        }
+        // Cache hit → contentVisible already true → show immediately, no animation
     }
 
     // ── Keyboard open → scroll to bottom ──────────────────────────────────────
