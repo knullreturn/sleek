@@ -27,7 +27,9 @@ export async function initFirebaseAdmin(): Promise<void> {
   }
 
   try {
-    const serviceAccount = JSON.parse(raw);
+    // Railway sometimes wraps the value in extra quotes — strip them
+    const cleaned = raw.trim().replace(/^["']|["']$/g, '');
+    const serviceAccount = JSON.parse(cleaned);
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     initialized = true;
     console.log('✅ Firebase Admin initialized');
