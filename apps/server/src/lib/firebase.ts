@@ -20,17 +20,24 @@ export async function initFirebaseAdmin(): Promise<void> {
   const admin = await getAdmin();
   if (!admin) return;
 
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) {
-    console.warn('⚠️  FIREBASE_SERVICE_ACCOUNT not set — FCM push disabled');
+  const projectId   = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey  = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (!projectId || !clientEmail || !privateKey) {
+    console.warn('⚠️  Firebase env vars not set — FCM push disabled');
     return;
   }
 
   try {
-    // Railway sometimes wraps the value in extra quotes — strip them
-    const cleaned = raw.trim().replace(/^["']|["']$/g, '');
-    const serviceAccount = JSON.parse(cleaned);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId,
+        clientEmail,
+        // Railway escapes \n as \\n in env vars — restore real newlines
+        privateKey: privateKey.replace(/\\n/g, '\n'),
+      }),
+    });
     initialized = true;
     console.log('✅ Firebase Admin initialized');
   } catch (e) {
