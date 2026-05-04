@@ -124,7 +124,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   }, [chatId, messages, user?.id]);
 
   // ── Seen index: which of our messages has the peer read up to? ─────────────
-  // Map message IDs to their flat index for O(1) lookup
+  // Map message IDs → flat index for O(1) bubble lookup
   const msgIndexMap = useMemo(() => {
     const map = new Map<string, number>();
     messages.forEach((m, i) => map.set(m.id, i));
@@ -135,6 +135,14 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     if (!seenUpToId) return -1;
     return msgIndexMap.get(seenUpToId) ?? -1;
   }, [seenUpToId, msgIndexMap]);
+
+  // If the most recent message in the chat is from the peer, they have replied —
+  // no timestamps should be green regardless of seenUpToId state.
+  const peerHasReplied = useMemo(() => {
+    if (messages.length === 0) return false;
+    const last = messages[messages.length - 1];
+    return last.senderId !== user?.id;
+  }, [messages, user?.id]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -247,8 +255,8 @@ export function ChatWindow({ chatId }: { chatId: string }) {
               const showMeta = !prev || prev.senderId !== msg.senderId;
               // Flat index of this message in the full messages array
               const flatIdx  = msgIndexMap.get(msg.id) ?? -1;
-              // Green timestamp: own message + peer has seen up to or past this one
-              const isSeen   = isOwn && seenUpToIdx >= 0 && flatIdx <= seenUpToIdx;
+              // Green: own msg + peer saw it + peer hasn't replied since
+              const isSeen   = isOwn && !peerHasReplied && seenUpToIdx >= 0 && flatIdx <= seenUpToIdx;
               return (
                 <MessageBubble
                   key={msg.id}

@@ -1498,3 +1498,17 @@ button.reply-chip:active { transform: scale(0.97); }
 
 /* FAB anchor — chat-canvas must be relative so FAB positions inside it */
 .chat-canvas { position: relative; }
+
+/* -- Fix: remove parent opacity so seen-green renders at full strength --------
+   The old msg-meta-row had opacity:0.55 which washed out the green on purple.
+   We now set explicit dim color on the time span itself instead.             */
+.msg-meta-row {
+  opacity: 1 !important;    /* override the 0.55 previously set */
+}
+.msg-meta-time {
+  color: rgba(255, 255, 255, 0.45);   /* dim by default on all bubbles */
+  transition: color 0.45s ease;
+}
+.msg-meta-time.seen {
+  color: #4ade80;   /* solid green — full opacity, visible on purple + dark */
+}
