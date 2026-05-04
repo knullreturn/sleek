@@ -76,7 +76,21 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
     onlineUsers.get(s.userId)!.add(s.id);
     broadcastPresence(io, prisma, s.userId, 'online');
 
-    // ── Room management ────────────────────────────────────────────────────────
+    // Personal room — used by send_message to find and join this socket into new chat rooms
+    socket.join(`user:${s.userId}`);
+
+    // ── Auto-join ALL user's chat rooms on connect ──────────────────────────────
+    // This ensures receive_message is delivered even when the chat isn't open.
+    // join_chat / leave_chat remain for fine-grained control (typing, etc.)
+    prisma.chatMember.findMany({ where: { userId: s.userId }, select: { chatId: true } })
+      .then((memberships) => {
+        for (const { chatId } of memberships) {
+          socket.join(`chat:${chatId}`);
+        }
+      })
+      .catch((err) => console.error('auto-join error:', err));
+
+    // ── Room management (for typing / read receipts per-chat granularity) ───────
     socket.on('join_chat', async (chatId: string) => {
       const member = await prisma.chatMember.findUnique({
         where: { chatId_userId: { chatId, userId: s.userId } },
@@ -111,6 +125,43 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
         });
 
         await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
+
+        // ── Ensure ALL members' sockets are in the room ────────────────────────
+        // This handles new chats created after a socket connected.
+        // If a member's socket isn't in the room, join them and emit new_chat
+        // so their UI adds the chat to the list instantly (no API re-fetch needed).
+        const allMembers = await prisma.chatMember.findMany({
+          where: { chatId },
+          select: { userId: true },
+        });
+        let chatForNewMembers: any = null; // lazy-loaded
+        for (const { userId } of allMembers) {
+          const userSockets = await io.in(`user:${userId}`).fetchSockets();
+          for (const sock of userSockets) {
+            if (!sock.rooms.has(`chat:${chatId}`)) {
+              sock.join(`chat:${chatId}`);
+              // Load full chat once and reuse for all new sockets
+              if (!chatForNewMembers) {
+                chatForNewMembers = await prisma.chat.findUnique({
+                  where: { id: chatId },
+                  include: { members: { include: { user: { select: memberSelect } } } },
+                });
+              }
+              if (chatForNewMembers) {
+                sock.emit('new_chat', {
+                  chat: {
+                    id:          chatForNewMembers.id,
+                    type:        chatForNewMembers.type,
+                    createdAt:   chatForNewMembers.createdAt.toISOString(),
+                    members:     chatForNewMembers.members.map((m: any) => ({ ...m.user, handle: m.user.tag })),
+                    lastMessage: serializeMessage(message),
+                  },
+                });
+              }
+            }
+          }
+        }
+
         io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
       } catch (err) {
         console.error('send_message error:', err);

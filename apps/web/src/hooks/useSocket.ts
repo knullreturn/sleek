@@ -30,29 +30,29 @@ export function useSocket() {
     });
 
     socket.on('receive_message', ({ message }: { message: any }) => {
-      const myId   = useAuthStore.getState().user?.id;
-      const state  = useChatStore.getState();
-      const exists = state.chats.some((c) => c.id === message.chatId);
+      const myId  = useAuthStore.getState().user?.id;
+      const state = useChatStore.getState();
 
-      // Always add the message to the store
+      // Always add to message store
       state.addMessage(message);
 
-      if (!exists) {
-        // Brand new chat from someone new — fetch the chat list silently
-        const tok    = useAuthStore.getState().token;
-        const apiUrl = import.meta.env.VITE_API_URL || '';
-        fetch(`${apiUrl}/chats`, {
-          headers: { Authorization: `Bearer ${tok}` },
-        })
-          .then((r) => r.json())
-          .then((chats: any[]) => useChatStore.getState().setChats(chats))
-          .catch(() => {});
+      // Update last message + re-sort chat list (if chat already known)
+      const chat = state.chats.find((c) => c.id === message.chatId);
+      if (chat) {
+        useChatStore.getState().upsertChat({ ...chat, lastMessage: message });
       }
+      // If chat not in list yet, the server will emit new_chat — handled below
 
-      // Peer replied → clear "seen" green on our previous messages
+      // Peer replied → clear “seen” green on our previous messages
       if (message.senderId !== myId) {
         state.setSeenUpTo(message.chatId, null);
       }
+    });
+
+    // Brand-new chat from someone — server emits this when a socket is joined
+    // to a room it wasn't in before (first message from a new person)
+    socket.on('new_chat', ({ chat }: { chat: any }) => {
+      useChatStore.getState().upsertChat(chat);
     });
 
     socket.on('message_edited', ({ message }: { message: any }) => {

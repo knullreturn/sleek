@@ -22,6 +22,7 @@ sealed class SocketEvent {
     data class TypingChanged(val chatId: String, val userId: String, val username: String, val isTyping: Boolean) : SocketEvent()
     data class PresenceChanged(val userId: String, val online: Boolean) : SocketEvent()
     data class MessageSeen(val messageId: String, val chatId: String, val userId: String) : SocketEvent()
+    data class NewChat(val chatJson: String) : SocketEvent()  // raw JSON — parsed by ChatListViewModel
 }
 
 @Singleton
@@ -53,6 +54,13 @@ class SocketManager @Inject constructor() {
                 s.on("message_deleted")  { args -> parseMessage(args)?.let { _events.tryEmit(SocketEvent.MessageDeleted(it)) } }
                 s.on("message_pinned")   { args -> parseMessage(args)?.let { _events.tryEmit(SocketEvent.MessagePinned(it)) } }
                 s.on("message_unpinned") { args -> parseMessage(args)?.let { _events.tryEmit(SocketEvent.MessageUnpinned(it)) } }
+
+                // New chat from a person we never talked to before
+                s.on("new_chat") { args ->
+                    val obj = args[0] as? JSONObject ?: return@on
+                    val chatObj = obj.optJSONObject("chat") ?: return@on
+                    _events.tryEmit(SocketEvent.NewChat(chatObj.toString()))
+                }
 
                 s.on("typing") { args ->
                     val obj = args[0] as? JSONObject ?: return@on
