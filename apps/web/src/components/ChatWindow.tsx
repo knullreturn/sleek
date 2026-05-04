@@ -131,10 +131,11 @@ function MessageBubble({
         {isDeleted ? (
           // Tombstone — no context menu, no content
           <div className={`msg-bubble${isOwn ? ' own' : ' other'} msg-bubble-deleted`}>
-            <span className="msg-deleted-text">🗑 This message was deleted</span>
-            <span className="msg-meta-time" style={{ opacity: 0.4 }}>
+            {/* Float time first so deleted text wraps around it */}
+            <span style={{ float: 'right', fontSize: 10, opacity: 0.4, marginLeft: 8, marginTop: 4, position: 'relative', top: 3, whiteSpace: 'nowrap' }}>
               {formatMessageTime(message.createdAt)}
             </span>
+            <span className="msg-deleted-text">🗑 This message was deleted</span>
           </div>
         ) : isEditing ? (
           <EditInput initial={message.content} onSave={onEditSave} onCancel={onEditCancel} />
@@ -150,11 +151,11 @@ function MessageBubble({
               </span>
             )}
 
-            {/* Message text — key forces remount to re-trigger fade on swap */}
+            {/* Message text — key remount re-triggers fade animation on peek swap */}
             <span
               key={peekOriginal ? 'orig' : 'curr'}
               className={`msg-content-text${peekOriginal ? ' content-peek' : ' content-current'}`}
-              style={{ wordBreak: 'break-word', lineHeight: 1.55, display: 'block' }}
+              style={{ wordBreak: 'break-word', lineHeight: 1.55 }}
             >
               {displayContent}
             </span>
