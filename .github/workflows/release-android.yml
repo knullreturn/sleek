@@ -1,0 +1,88 @@
+name: Release Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'   # triggers on v1.0.0, v1.1.0, etc.
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ─────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Java 17 (matches compileSdk in build.gradle.kts) ─────────────────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ── Generate debug keystore ───────────────────────────────────────────────
+      # Our build.gradle.kts uses ~/.android/debug.keystore for signing.
+      # This step guarantees the keystore exists on the CI runner.
+      - name: Generate debug keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      # ── Gradle cache (speeds up subsequent builds significantly) ──────────────
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('apps/android/**/*.gradle*', 'apps/android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # ── Make gradlew executable ───────────────────────────────────────────────
+      - name: Grant execute permission for gradlew
+        run: chmod +x apps/android/gradlew
+
+      # ── Build release APK ─────────────────────────────────────────────────────
+      - name: Build release APK
+        working-directory: apps/android
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      # ── Extract version from tag name ─────────────────────────────────────────
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      # ── Rename APK to match download URL in Settings → Downloads ──────────────
+      - name: Rename APK
+        run: |
+          mv apps/android/app/build/outputs/apk/release/app-release.apk \
+             sleek-${{ steps.version.outputs.VERSION }}.apk
+
+      # ── Create GitHub Release and attach the APK ──────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "SLEEK ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## SLEEK Android ${{ steps.version.outputs.VERSION }}
+
+            ### How to install
+            1. Download **sleek-${{ steps.version.outputs.VERSION }}.apk** below
+            2. Open the file on your Android device
+            3. Allow **"Install unknown apps"** if prompted
+            4. Tap **Install** — done!
+
+            **Requirements:** Android 8.0+ (API 26)
+
+          files: sleek-${{ steps.version.outputs.VERSION }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
