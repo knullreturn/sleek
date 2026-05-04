@@ -14,14 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.sleek.app.R
 import com.sleek.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,30 +57,14 @@ fun ChatListScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment     = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Brush.linearGradient(listOf(Accent, AccentLight))),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("S", style = MaterialTheme.typography.titleMedium.copy(color = TextPrimary, fontSize = 16.sp))
-                }
-                Text(
-                    text  = "SLEEK",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        brush         = Brush.linearGradient(listOf(Accent, AccentLight)),
-                        letterSpacing = 3.sp,
-                        fontSize      = 20.sp,
-                    ),
-                )
-            }
+            Image(
+                painter            = painterResource(id = R.drawable.header_logo),
+                contentDescription = "SLEEK",
+                modifier           = Modifier.height(28.dp).weight(1f),
+                contentScale       = ContentScale.Fit,
+            )
             Box(
                 modifier = Modifier.size(36.dp).clip(CircleShape).clickable { onOpenProfile() },
                 contentAlignment = Alignment.Center,

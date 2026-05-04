@@ -11,6 +11,7 @@
     <!-- Splash screen theme -->
     <style name="Theme.Sleek.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@android:color/black</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.Sleek</item>
     </style>
 </resources>
