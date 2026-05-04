@@ -67,17 +67,15 @@ fun ChatScreen(
         state.messages.lastOrNull()?.senderId != myId
     }
 
-    // Auto-scroll to bottom — only on initial load + new messages, not every recompose
+    // ── Scroll to bottom ──────────────────────────────────────────────────────
+    // Initial scroll fires when contentVisible=true (LazyColumn just rendered).
+    // Subsequent scrolls fire on new incoming messages.
     val initialScrollDone = remember { mutableStateOf(false) }
-    LaunchedEffect(state.isLoading) {
-        if (!state.isLoading && !initialScrollDone.value && state.messages.isNotEmpty()) {
-            listState.scrollToItem(state.messages.size - 1)  // instant, no animation on load
-            initialScrollDone.value = true
-        }
-    }
+
     LaunchedEffect(state.messages.size) {
+        // Only animate-scroll after initial scroll is done (new messages arriving)
         if (initialScrollDone.value && state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
+            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
         }
     }
     // ── Decouple slide from message render ────────────────────────────────────
@@ -89,6 +87,14 @@ fun ChatScreen(
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(300)
         contentVisible = true
+    }
+
+    // ── Initial scroll: jump to bottom the moment LazyColumn first renders ────
+    LaunchedEffect(contentVisible) {
+        if (contentVisible && state.messages.isNotEmpty()) {
+            listState.scrollToItem(state.messages.size - 1)   // instant, before fade-in
+            initialScrollDone.value = true
+        }
     }
 
     // ── Keyboard open → scroll to bottom ──────────────────────────────────────
