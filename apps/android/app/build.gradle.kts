@@ -22,7 +22,7 @@ android {
         buildConfigField("String", "API_URL",    "\"https://sleek.up.railway.app/api\"")
         buildConfigField("String", "SOCKET_URL", "\"https://sleek.up.railway.app\"")
         // Replace with your Web Client ID from Google Cloud Console
-        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"YOUR_WEB_CLIENT_ID.apps.googleusercontent.com\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"141880657818-7jsf05m73t748gtuhf3qh0vo8aad3p47.apps.googleusercontent.com\"")
     }
 
     buildTypes {
