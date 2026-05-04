@@ -79,14 +79,16 @@ fun ChatScreen(
         if (initialScrollDone.value && state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
         }
-    }    // ── Content visibility: instant if Room has data, fade-in on first open ──
-    val hasCachedContent = remember { viewModel.mightHaveData(chatId) }
-    var contentVisible by remember { mutableStateOf(hasCachedContent) }
+    }
+    // ── Decouple slide from message render ────────────────────────────────────
+    // LazyColumn NEVER renders during the 340ms slide animation.
+    // Room collects messages in the background (IO thread) while the slide plays.
+    // At 300ms (tail of the deceleration curve), we flip contentVisible → the
+    // LazyColumn renders ONCE with all messages already ready. Zero jank.
+    var contentVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (!hasCachedContent) {
-            kotlinx.coroutines.delay(160)   // wait for nav slide to settle
-            contentVisible = true
-        }
+        kotlinx.coroutines.delay(300)
+        contentVisible = true
     }
 
     // ── Keyboard open → scroll to bottom ──────────────────────────────────────
@@ -307,10 +309,10 @@ fun ChatScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Fade in AFTER nav transition settles — clean slide then content appears
+            // Slide plays clean. At 300ms, content fades in over 180ms (overlaps the slide's deceleration tail)
             androidx.compose.animation.AnimatedVisibility(
                 visible = contentVisible,
-                enter   = fadeIn(tween(240)),
+                enter   = fadeIn(tween(180, easing = LinearOutSlowInEasing)),
             ) {
             if (state.isLoading) {
                 // Skeleton (first-time only)
