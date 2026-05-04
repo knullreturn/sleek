@@ -115,11 +115,14 @@ export function useMessageScroll({
   // Keep bottom in view when typing indicator appears
   useEffect(() => {
     if (typingNames.length === 0) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    if (canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight < 120) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (isScrolledUpRef.current) return;   // user intentionally scrolled up — don't interrupt
+    // Wait one animation frame so the indicator is in the DOM before measuring
+    const id = requestAnimationFrame(() => {
+      isProgrammaticScroll.current = true;
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      setTimeout(() => { isProgrammaticScroll.current = false; }, 150);
+    });
+    return () => cancelAnimationFrame(id);
   }, [typingNames]);
 
   const scrollToBottom = () => {
