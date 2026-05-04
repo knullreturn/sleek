@@ -354,11 +354,15 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   }, [chatId]);
 
   const scrollToMessage = useCallback((id: string) => {
-    const el = document.getElementById(`msg-${id}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('msg-highlight');
-    setTimeout(() => el.classList.remove('msg-highlight'), 1800);
+    const row = document.getElementById(`msg-${id}`);
+    if (!row) return;
+    // Scroll the row into view (row has the id anchor)
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Apply flash to the bubble only — not the full-width row
+    const bubble = row.querySelector<HTMLElement>('.msg-bubble');
+    if (!bubble) return;
+    bubble.classList.add('msg-highlight');
+    setTimeout(() => bubble.classList.remove('msg-highlight'), 1600);
   }, []);
 
   // Group messages by calendar day (memoised — O(n) per message list change)
