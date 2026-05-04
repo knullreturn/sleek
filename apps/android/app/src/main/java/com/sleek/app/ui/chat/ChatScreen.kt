@@ -3,9 +3,11 @@ package com.sleek.app.ui.chat
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -41,7 +43,8 @@ fun ChatScreen(
     val state  by viewModel.state.collectAsStateWithLifecycle()
     val myId   by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
 
-    LaunchedEffect(chatId) { viewModel.init(chatId) }
+    // init synchronously during composition — cache hit sets state before first frame
+    remember(chatId) { viewModel.init(chatId) }
 
     // Mark seen on last peer message when screen opens / messages update
     LaunchedEffect(state.messages) {
@@ -165,18 +168,17 @@ fun ChatScreen(
                             }
                         }
                     }
-                }
-
-                // Input bar
+                             // ── Input bar ─────────────────────────────────────────────────
+                val hasText = inputValue.text.isNotBlank()
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Surface)
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                         .navigationBarsPadding()
                         .imePadding(),
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     TextField(
                         value         = inputValue,
@@ -187,7 +189,44 @@ fun ChatScreen(
                         modifier      = Modifier
                             .weight(1f)
                             .focusRequester(focusReq),
-                        placeholder   = { Text("Message…", style = MaterialTheme.typography.bodyMedium) },
+                        placeholder   = {
+                            Text(
+                                "Message…",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        },
+                        // ── Send button lives INSIDE the field ────────────────
+                        trailingIcon  = {
+                            AnimatedVisibility(
+                                visible = hasText,
+                                enter   = scaleIn(tween(150)) + fadeIn(tween(150)),
+                                exit    = scaleOut(tween(100)) + fadeOut(tween(100)),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 4.dp)
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(Accent)
+                                        .clickable {
+                                            viewModel.sendMessage(inputValue.text.trim(), replyingTo?.id)
+                                            inputValue = TextFieldValue()
+                                            replyingTo = null
+                                            viewModel.sendTyping(false)
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector       = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Send",
+                                        tint              = TextPrimary,
+                                        modifier          = Modifier.size(16.dp),
+                                    )
+                                }
+                            }
+                        },
+                        singleLine    = false,
+                        maxLines      = 5,
                         colors        = TextFieldDefaults.colors(
                             focusedContainerColor   = SurfaceHigh,
                             unfocusedContainerColor = SurfaceHigh,
@@ -197,73 +236,40 @@ fun ChatScreen(
                             focusedIndicatorColor   = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
                         ),
-                        shape    = MaterialTheme.shapes.medium,
-                        maxLines = 6,
+                        shape = RoundedCornerShape(28.dp),   // pill shape
                     )
-
-                    // Send button
-                    val hasText = inputValue.text.isNotBlank()
-                    AnimatedContent(targetState = hasText, label = "send_btn") { active ->
-                        FloatingActionButton(
-                            onClick = {
-                                if (active) {
-                                    viewModel.sendMessage(inputValue.text.trim(), replyingTo?.id)
-                                    inputValue = TextFieldValue()
-                                    replyingTo = null
-                                    viewModel.sendTyping(false)
-                                }
-                            },
-                            modifier         = Modifier.size(48.dp),
-                            containerColor   = if (active) Accent else SurfaceHigh,
-                            contentColor     = TextPrimary,
-                            elevation        = FloatingActionButtonDefaults.elevation(0.dp),
-                        ) {
-                            Icon(
-                                imageVector       = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                            )
-                        }
-                    }
                 }
             }
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Smooth crossfade between skeleton and real content
-            AnimatedContent(
-                targetState   = state.isLoading,
-                transitionSpec = {
-                    fadeIn(tween(300)) togetherWith fadeOut(tween(200))
-                },
-                label = "chat_content",
-            ) { loading ->
-                if (loading) {
-                    // Skeleton bubbles
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        repeat(5) { i ->
-                            val isOwn = i % 2 == 0
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(if (isOwn) 0.55f else 0.5f)
-                                        .height(42.dp)
-                                        .background(SurfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther)
-                                )
-                            }
+            if (state.isLoading) {
+                // Skeleton bubbles (only on very first load — cache skips this)
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    repeat(5) { i ->
+                        val isOwn = i % 2 == 0
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(if (isOwn) 0.55f else 0.5f)
+                                    .height(42.dp)
+                                    .background(SurfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther)
+                            )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        state          = listState,
-                        modifier       = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
-                    ) {
+                }
+            } else {
+                LazyColumn(
+                    state          = listState,
+                    modifier       = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                ) {
                         val grouped = groupByDate(state.messages)
                         grouped.forEach { (dateLabel, msgs) ->
                             // Date separator
@@ -306,7 +312,6 @@ fun ChatScreen(
                                 TypingIndicator(names = state.typingUsers)
                             }
                         }
-                    }
                 }
             }
         }

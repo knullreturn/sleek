@@ -38,11 +38,30 @@ class ChatViewModel @Inject constructor(
     private var currentChatId: String = ""
 
     fun init(chatId: String) {
-        if (currentChatId == chatId) return   // already initialised — don't reload
+        if (currentChatId == chatId) return   // already initialised
         currentChatId = chatId
         socketManager.joinChat(chatId)
         observeSocket()
-        loadMessages(chatId)
+
+        // ── Synchronous cache check ────────────────────────────────────────
+        // Runs on the main thread BEFORE the first frame renders → no skeleton
+        val cached = messageRepository.get(chatId)
+        if (cached != null) {
+            _state.value = ChatUiState(messages = cached, isLoading = false)
+            // Resolve peer + silent network refresh in background
+            viewModelScope.launch {
+                val myId = tokenDataStore.userId.first()
+                val peer = cached.firstOrNull { it.senderId != myId }?.sender
+                _state.update { it.copy(peer = peer) }
+                fetchAndUpdate(chatId, myId, silent = true)
+            }
+        } else {
+            // No cache → show skeleton, then fetch
+            viewModelScope.launch {
+                val myId = tokenDataStore.userId.first()
+                fetchAndUpdate(chatId, myId, silent = false)
+            }
+        }
     }
 
     override fun onCleared() {
