@@ -70,20 +70,26 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
 
+          # Write notes to a file to avoid YAML quoting issues
+          cat > release-notes.md << 'EOF'
+          ## SLEEK Android __VERSION__
+
+          ### How to install
+          1. Download **sleek-__VERSION__.apk** below
+          2. Open the file on your Android device
+          3. Allow **"Install unknown apps"** if prompted
+          4. Tap **Install** — done!
+
+          **Requirements:** Android 8.0+ (API 26)
+          EOF
+          sed -i "s/__VERSION__/${VERSION}/g" release-notes.md
+
           # Delete any existing release for this tag (clean re-release support)
-          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null || true
+          gh release delete "${VERSION}" --yes --cleanup-tag 2>/dev/null || true
 
-          # Create release with both APKs in one atomic command
-          gh release create "$VERSION" \
-            sleek-${VERSION}.apk \
-            sleek.apk \
+          # Create release with both APKs
+          gh release create "${VERSION}" \
+            "sleek-${VERSION}.apk" \
+            "sleek.apk" \
             --title "SLEEK ${VERSION}" \
-            --notes "## SLEEK Android ${VERSION}
-
-### How to install
-1. Download **sleek-${VERSION}.apk** below
-2. Open the file on your Android device
-3. Allow **\"Install unknown apps\"** if prompted
-4. Tap **Install** — done!
-
-**Requirements:** Android 8.0+ (API 26)"
+            --notes-file release-notes.md
