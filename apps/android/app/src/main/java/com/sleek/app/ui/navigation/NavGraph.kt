@@ -10,6 +10,7 @@ import com.sleek.app.ui.auth.LoginScreen
 import com.sleek.app.ui.auth.OnboardingScreen
 import com.sleek.app.ui.chat.ChatScreen
 import com.sleek.app.ui.chatlist.ChatListScreen
+import com.sleek.app.ui.profile.ProfileScreen
 
 @Composable
 fun NavGraph(
@@ -22,7 +23,6 @@ fun NavGraph(
         startDestination = startDestination,
         modifier         = modifier,
     ) {
-        // ── Login — Google Sign-In ────────────────────────────────────────────
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
@@ -38,7 +38,6 @@ fun NavGraph(
             )
         }
 
-        // ── Onboarding — new user picks username ──────────────────────────────
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onDone = {
@@ -49,16 +48,19 @@ fun NavGraph(
             )
         }
 
-        // ── Chat list ─────────────────────────────────────────────────────────
         composable(Screen.ChatList.route) {
             ChatListScreen(
-                onOpenChat = { chatId, chatName ->
+                onOpenChat    = { chatId, chatName ->
                     navController.navigate(Screen.Chat.createRoute(chatId, chatName))
                 },
+                onOpenProfile = { navController.navigate(Screen.Profile.route) },
             )
         }
 
-        // ── Chat ──────────────────────────────────────────────────────────────
+        composable(Screen.Profile.route) {
+            ProfileScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(
             route = Screen.Chat.route,
             arguments = listOf(

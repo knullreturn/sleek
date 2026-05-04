@@ -11,12 +11,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.sleek.app.data.model.User
 
 data class ChatUiState(
     val messages:    List<Message> = emptyList(),
     val isLoading:   Boolean       = true,
     val typingUsers: List<String>  = emptyList(),  // usernames typing
     val seenUpToId:  String?       = null,          // last message seen by peer
+    val peer:        User?         = null,          // derived from messages
 )
 
 @HiltViewModel
@@ -49,9 +51,13 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             try {
+                val myId = tokenDataStore.userId.first()
                 val res = apiService.getMessages(chatId)
                 if (res.isSuccessful) {
-                    _state.update { it.copy(messages = res.body()?.messages ?: emptyList(), isLoading = false) }
+                    val msgs = res.body()?.messages ?: emptyList()
+                    // Derive peer — first sender that isn't me
+                    val peer = msgs.firstOrNull { it.senderId != myId }?.sender
+                    _state.update { it.copy(messages = msgs, isLoading = false, peer = peer) }
                 }
             } catch (_: Exception) {
                 _state.update { it.copy(isLoading = false) }

@@ -1,9 +1,11 @@
 package com.sleek.app.ui.chat
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -12,13 +14,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.chat.components.*
 import com.sleek.app.ui.theme.*
@@ -65,7 +70,57 @@ fun ChatScreen(
         containerColor = Black,
         topBar = {
             TopAppBar(
-                title  = { Text(chatName, style = MaterialTheme.typography.titleMedium) },
+                title = {
+                    // Avatar + name row
+                    val peer = state.peer
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        // Avatar
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (peer?.avatarUrl != null) {
+                                AsyncImage(
+                                    model             = peer.avatarUrl,
+                                    contentDescription = peer.username,
+                                    contentScale      = ContentScale.Crop,
+                                    modifier          = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(AccentDim),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text  = (peer?.username ?: chatName).take(1).uppercase(),
+                                        style = MaterialTheme.typography.labelMedium.copy(color = Accent),
+                                    )
+                                }
+                            }
+                        }
+
+                        // Name + tag
+                        Column {
+                            Text(
+                                text  = peer?.username ?: chatName,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            if (peer?.tag != null) {
+                                Text(
+                                    text  = "#${peer.tag}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextSecondary)
