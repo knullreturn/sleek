@@ -37,12 +37,13 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [newMsgCount,  setNewMsgCount]  = useState(0);
 
-  const typingTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bottomRef         = useRef<HTMLDivElement>(null);
-  const canvasRef         = useRef<HTMLDivElement>(null);
-  const textareaRef       = useRef<HTMLTextAreaElement>(null);
-  const initialScrollDone = useRef(false);
-  const isScrolledUpRef   = useRef(false);  // ref for use inside effects without stale closure
+  const typingTimeoutRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bottomRef           = useRef<HTMLDivElement>(null);
+  const canvasRef           = useRef<HTMLDivElement>(null);
+  const textareaRef         = useRef<HTMLTextAreaElement>(null);
+  const initialScrollDone   = useRef(false);
+  const isScrolledUpRef     = useRef(false);
+  const isProgrammaticScroll = useRef(false);  // suppress FAB during auto-scrolls
 
   // ── Socket room ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -67,11 +68,12 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const onScroll = () => {
+      // Ignore scroll events fired by our own programmatic scrolls
+      if (isProgrammaticScroll.current) return;
       const distFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
       const scrolledUp = distFromBottom > 120;
       setIsScrolledUp(scrolledUp);
       isScrolledUpRef.current = scrolledUp;
-      // Clear count when they scroll back down
       if (!scrolledUp) setNewMsgCount(0);
     };
     canvas.addEventListener('scroll', onScroll, { passive: true });
@@ -82,7 +84,10 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   useEffect(() => {
     if (messages.length === 0) return;
     if (!initialScrollDone.current) {
+      // First load — jump instantly, let animation play at rest
+      isProgrammaticScroll.current = true;
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      setTimeout(() => { isProgrammaticScroll.current = false; }, 100);
       initialScrollDone.current = true;
       return;
     }
@@ -90,11 +95,14 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     const isOwnMessage = lastMsg?.senderId === user?.id;
 
     if (isScrolledUpRef.current && !isOwnMessage) {
-      // User is reading old messages — show FAB count instead of auto-scrolling
+      // User reading old messages — show FAB count
       setNewMsgCount((c) => c + 1);
     } else {
-      // Near bottom or own message sent — auto-scroll
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Auto-scroll: use instant so the fly-in animation plays at rest (no jank)
+      // and onScroll never fires at a mid-scroll position (no false FAB)
+      isProgrammaticScroll.current = true;
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      setTimeout(() => { isProgrammaticScroll.current = false; }, 100);
     }
   }, [messages, user?.id]);
 
