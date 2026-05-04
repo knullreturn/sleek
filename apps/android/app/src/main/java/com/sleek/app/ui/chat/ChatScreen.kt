@@ -79,17 +79,14 @@ fun ChatScreen(
         if (initialScrollDone.value && state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
         }
-    }    // ── Content visibility: instant if cached, fade-in only on first open ────
-    // viewModel.state.value is already updated synchronously by remember{init()} above
-    val hasCachedContent = remember { viewModel.state.value.messages.isNotEmpty() }
+    }    // ── Content visibility: instant if Room has data, fade-in on first open ──
+    val hasCachedContent = remember { viewModel.mightHaveData(chatId) }
     var contentVisible by remember { mutableStateOf(hasCachedContent) }
     LaunchedEffect(Unit) {
         if (!hasCachedContent) {
-            // First ever open — wait for nav slide, then fade in
-            kotlinx.coroutines.delay(160)
+            kotlinx.coroutines.delay(160)   // wait for nav slide to settle
             contentVisible = true
         }
-        // Cache hit → contentVisible already true → show immediately, no animation
     }
 
     // ── Keyboard open → scroll to bottom ──────────────────────────────────────
@@ -337,12 +334,14 @@ fun ChatScreen(
                     }
                 }
             } else {
+                // ── Pre-compute group list — only recalculated when messages change ──
+                val grouped = remember(state.messages) { groupByDate(state.messages) }
+
                 LazyColumn(
                     state          = listState,
                     modifier       = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
-                        val grouped = groupByDate(state.messages)
                         grouped.forEach { (dateLabel, msgs) ->
                             // Date separator
                             item(key = "sep_$dateLabel") {

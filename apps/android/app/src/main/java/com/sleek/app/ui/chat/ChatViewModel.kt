@@ -37,29 +37,40 @@ class ChatViewModel @Inject constructor(
 
     private var currentChatId: String = ""
 
+    // ── Public: expose whether Room likely has data (synchronous) ─────────────
+    fun mightHaveData(chatId: String) = messageRepository.mightHaveData(chatId)
+
     fun init(chatId: String) {
-        if (currentChatId == chatId) return   // already initialised
+        if (currentChatId == chatId) return   // already initialised for this chat
         currentChatId = chatId
         socketManager.joinChat(chatId)
         observeSocket()
 
-        // ── Synchronous cache check ────────────────────────────────────────
-        // Runs on the main thread BEFORE the first frame renders → no skeleton
-        val cached = messageRepository.get(chatId)
-        if (cached != null) {
-            _state.value = ChatUiState(messages = cached, isLoading = false)
-            // Resolve peer + silent network refresh in background
-            viewModelScope.launch {
+        // ── 1. Subscribe to Room Flow — UI updates automatically ──────────────
+        // Room emits the first value from disk in < 5ms — no skeleton on re-opens
+        messageRepository.observeMessages(chatId)
+            .onEach { messages ->
                 val myId = tokenDataStore.userId.first()
-                val peer = cached.firstOrNull { it.senderId != myId }?.sender
-                _state.update { it.copy(peer = peer) }
-                fetchAndUpdate(chatId, myId, silent = true)
+                val peer = messages.firstOrNull { it.senderId != myId }?.sender
+                _state.update { s ->
+                    s.copy(
+                        messages  = messages,
+                        isLoading = messages.isEmpty() && s.isLoading,
+                        peer      = peer ?: s.peer,
+                    )
+                }
             }
-        } else {
-            // No cache → show skeleton, then fetch
-            viewModelScope.launch {
-                val myId = tokenDataStore.userId.first()
-                fetchAndUpdate(chatId, myId, silent = false)
+            .launchIn(viewModelScope)
+
+        // ── 2. Background: fetch from network if no local data ────────────────
+        viewModelScope.launch {
+            val myId = tokenDataStore.userId.first()
+            if (!messageRepository.hasMessages(chatId)) {
+                // First ever open — show skeleton until fetch completes
+                fetchAndSave(chatId, myId)
+            } else {
+                // Has local data — fetch silently to sync any new messages
+                fetchAndSave(chatId, myId, silent = true)
             }
         }
     }
@@ -69,33 +80,15 @@ class ChatViewModel @Inject constructor(
         socketManager.leaveChat(currentChatId)
     }
 
-    private fun loadMessages(chatId: String) {
-        viewModelScope.launch {
-            val myId   = tokenDataStore.userId.first()
-            val cached = messageRepository.get(chatId)
-
-            if (cached != null) {
-                // ── Cache hit: show immediately, no skeleton ──────────────────
-                val peer = cached.firstOrNull { it.senderId != myId }?.sender
-                _state.update { it.copy(messages = cached, isLoading = false, peer = peer) }
-                // Silent background refresh — don't touch isLoading
-                fetchAndUpdate(chatId, myId, silent = true)
-            } else {
-                // ── No cache: show skeleton then load ─────────────────────────
-                _state.update { it.copy(isLoading = true) }
-                fetchAndUpdate(chatId, myId, silent = false)
-            }
-        }
-    }
-
-    private suspend fun fetchAndUpdate(chatId: String, myId: String?, silent: Boolean) {
+    private suspend fun fetchAndSave(chatId: String, myId: String?, silent: Boolean = false) {
         try {
             val res = apiService.getMessages(chatId)
             if (res.isSuccessful) {
                 val msgs = res.body()?.messages ?: emptyList()
-                val peer = msgs.firstOrNull { it.senderId != myId }?.sender
-                messageRepository.set(chatId, msgs)
-                _state.update { it.copy(messages = msgs, isLoading = false, peer = peer) }
+                // Write to Room → the Flow above auto-updates the UI
+                messageRepository.saveAll(chatId, msgs)
+                // isLoading → false (Room Flow will set messages, but we ensure loading stops)
+                if (!silent) _state.update { it.copy(isLoading = false) }
             } else if (!silent) {
                 _state.update { it.copy(isLoading = false) }
             }
@@ -111,11 +104,10 @@ class ChatViewModel @Inject constructor(
                 when (event) {
                     is SocketEvent.MessageReceived -> {
                         if (event.message.chatId == currentChatId) {
+                            // Write to Room → Flow auto-emits new list
+                            messageRepository.upsert(event.message)
                             _state.update { s ->
-                                val msgs = s.messages + event.message
-                                messageRepository.set(currentChatId, msgs)
                                 s.copy(
-                                    messages   = msgs,
                                     seenUpToId = if (event.message.senderId != myId) null else s.seenUpToId,
                                 )
                             }
@@ -130,11 +122,11 @@ class ChatViewModel @Inject constructor(
                             is SocketEvent.MessageDeleted  -> event.message
                             is SocketEvent.MessagePinned   -> event.message
                             is SocketEvent.MessageUnpinned -> event.message
-                            else -> return@collect
+                            else                           -> return@collect
                         }
                         if (msg.chatId == currentChatId) {
-                            messageRepository.upsert(currentChatId, msg)
-                            updateMessage(msg)
+                            // Upsert → Room → Flow auto-updates UI
+                            messageRepository.upsert(msg)
                         }
                     }
                     is SocketEvent.TypingChanged -> {
@@ -155,13 +147,6 @@ class ChatViewModel @Inject constructor(
                     else -> {}
                 }
             }
-        }
-    }
-
-    private fun updateMessage(updated: Message) {
-        if (updated.chatId != currentChatId) return
-        _state.update { s ->
-            s.copy(messages = s.messages.map { if (it.id == updated.id) updated else it })
         }
     }
 

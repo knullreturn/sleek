@@ -1,32 +1,59 @@
 package com.sleek.app.data.repository
 
+import com.sleek.app.data.local.db.MessageDao
+import com.sleek.app.data.local.db.toEntity
+import com.sleek.app.data.local.db.toMessage
 import com.sleek.app.data.model.Message
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In-memory message cache — survives navigation (Singleton scope).
- * On first open: no cache → show skeleton → cache result.
- * On re-open:    show cache instantly → silent background refresh.
+ * Single source of truth for messages — backed by Room (SQLite).
+ *
+ * WhatsApp-style strategy:
+ *  - Open chat  → Room Flow emits from disk instantly (< 5 ms)
+ *  - Network    → writes to Room → Flow auto-updates UI
+ *  - Socket     → upserts into Room → Flow auto-updates UI
+ *  - No manual state; UI always reads from Room
+ *
+ * knownChatIds: lightweight in-memory set so ChatScreen can decide
+ *               synchronously whether to skip the "first open" fade-in.
  */
 @Singleton
-class MessageRepository @Inject constructor() {
+class MessageRepository @Inject constructor(
+    private val dao: MessageDao,
+) {
+    // Populated whenever we save messages — survives config changes
+    private val knownChatIds = mutableSetOf<String>()
 
-    // chatId → ordered message list
-    private val cache = mutableMapOf<String, List<Message>>()
+    // ── Synchronous helpers (main-thread safe) ────────────────────────────────
 
-    fun get(chatId: String): List<Message>? = cache[chatId]
+    /** True if this chat had messages the last time we saved data for it */
+    fun mightHaveData(chatId: String): Boolean = knownChatIds.contains(chatId)
 
-    fun set(chatId: String, messages: List<Message>) {
-        cache[chatId] = messages
+    // ── Room Flow ─────────────────────────────────────────────────────────────
+
+    /** Live stream — emits a new list whenever ANY message in this chat changes */
+    fun observeMessages(chatId: String): Flow<List<Message>> =
+        dao.observeMessages(chatId).map { entities -> entities.map { it.toMessage() } }
+
+    // ── Suspend helpers (background thread) ───────────────────────────────────
+
+    /** True if Room has at least one row for this chat */
+    suspend fun hasMessages(chatId: String): Boolean =
+        dao.countMessages(chatId) > 0
+
+    /** Replace all messages for a chat (full network refresh) */
+    suspend fun saveAll(chatId: String, messages: List<Message>) {
+        dao.replaceAll(chatId, messages.map { it.toEntity() })
+        knownChatIds.add(chatId)
     }
 
-    /** Merge a single new/updated message into the cache */
-    fun upsert(chatId: String, message: Message) {
-        val current = cache[chatId] ?: return
-        val updated = current.map { if (it.id == message.id) message else it }
-        cache[chatId] = if (updated.none { it.id == message.id }) current + message else updated
+    /** Insert or update a single message (socket new/edit/delete/pin) */
+    suspend fun upsert(message: Message) {
+        dao.upsert(message.toEntity())
+        knownChatIds.add(message.chatId)
     }
-
-    fun clear(chatId: String) = cache.remove(chatId)
 }

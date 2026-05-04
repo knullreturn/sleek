@@ -141,7 +141,7 @@ fun ChatListScreen(
             TextField(
                 value         = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                modifier      = Modifier.weight(1f).height(46.dp),
+                modifier      = Modifier.weight(1f),
                 placeholder   = {
                     Text(
                         "Search conversations…",
@@ -169,10 +169,10 @@ fun ChatListScreen(
                 shape             = RoundedCornerShape(12.dp),
             )
 
-            // "+" new DM button — matches reduced height
+            // "+" new DM button — matches natural TextField height
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(52.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(AccentDim)
                     .clickable { viewModel.showNewDm() },
