@@ -168,7 +168,9 @@ fun ChatScreen(
                             }
                         }
                     }
-                             // ── Input bar ─────────────────────────────────────────────────
+                }   // end AnimatedVisibility
+
+                // ── Input bar ─────────────────────────────────────────────────
                 val hasText = inputValue.text.isNotBlank()
                 Row(
                     modifier = Modifier
