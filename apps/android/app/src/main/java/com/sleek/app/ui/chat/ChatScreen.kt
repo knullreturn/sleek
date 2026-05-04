@@ -61,6 +61,11 @@ fun ChatScreen(
     val focusReq     = remember { FocusRequester() }
     var contextMsg   by remember { mutableStateOf<Message?>(null) }  // long-press target
     val clipboard    = LocalClipboardManager.current
+    val coroutineScope        = rememberCoroutineScope()
+    var highlightedMessageId  by remember { mutableStateOf<String?>(null) }
+
+    // Hoisted so onReplyTap can compute the scroll index
+    val grouped = remember(state.messages) { groupByDate(state.messages) }
 
     // Derived: if last message is from peer, green timestamps reset
     val peerHasReplied = remember(state.messages) {
@@ -159,7 +164,7 @@ fun ChatScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(AccentDim),
+                                        .background(SurfaceHigh),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
@@ -233,7 +238,7 @@ fun ChatScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                                    .background(AccentDim),
+                                    .background(SurfaceHigh),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 // Accent left border
@@ -378,8 +383,7 @@ fun ChatScreen(
                     }
                 }
             } else {
-                // ── Pre-compute group list — only recalculated when messages change ──
-                val grouped = remember(state.messages) { groupByDate(state.messages) }
+                // grouped is already computed above — reuse it
 
                 LazyColumn(
                     state          = listState,
@@ -411,12 +415,31 @@ fun ChatScreen(
                                 val isSeen     = isOwn && !peerHasReplied && msg.id == state.seenUpToId
 
                                 MessageBubble(
-                                    message     = msg,
-                                    isOwn       = isOwn,
-                                    showAvatar  = showAvatar,
-                                    isSeen      = isSeen,
-                                    onLongPress = { contextMsg = msg },
-                                    onReplyTap  = { /* TODO: scroll to replied msg */ },
+                                    message      = msg,
+                                    isOwn        = isOwn,
+                                    showAvatar   = showAvatar,
+                                    isSeen       = isSeen,
+                                    isHighlighted = msg.id == highlightedMessageId,
+                                    onLongPress  = { contextMsg = msg },
+                                    onReplyTap   = { replyMsgId ->
+                                        coroutineScope.launch {
+                                            // Calculate LazyColumn index (msgs + separators)
+                                            var idx = 0
+                                            var found = false
+                                            for ((_, grpMsgs) in grouped) {
+                                                idx++ // separator
+                                                val pos = grpMsgs.indexOfFirst { it.id == replyMsgId }
+                                                if (pos >= 0) { idx += pos; found = true; break }
+                                                idx += grpMsgs.size
+                                            }
+                                            if (found) {
+                                                listState.animateScrollToItem(idx)
+                                                highlightedMessageId = replyMsgId
+                                                delay(1600)
+                                                highlightedMessageId = null
+                                            }
+                                        }
+                                    },
                                 )
                             }
                         }

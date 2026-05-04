@@ -28,15 +28,17 @@ import com.sleek.app.data.model.Message
 import com.sleek.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun MessageBubble(
     message:       Message,
     isOwn:         Boolean,
-    showAvatar:    Boolean,   // first in group — show avatar
+    showAvatar:    Boolean,
     isSeen:        Boolean,
+    isHighlighted: Boolean = false,
     onLongPress:   (Message) -> Unit,
-    onReplyTap:    (String) -> Unit,   // scroll to reply origin
+    onReplyTap:    (String) -> Unit,
     modifier:      Modifier = Modifier,
 ) {
     val isDeleted = message.deletedAt != null
@@ -45,6 +47,19 @@ fun MessageBubble(
     var peekOriginal by remember { mutableStateOf(false) }
     val canPeek      = message.edited && message.originalContent != null
     val displayText  = if (peekOriginal && canPeek) message.originalContent!! else message.content
+
+    // ── Blink highlight (reply-tap) ───────────────────────────────────────────
+    val highlightAlpha = remember { Animatable(0f) }
+    LaunchedEffect(isHighlighted) {
+        if (isHighlighted) {
+            repeat(2) {
+                highlightAlpha.animateTo(0.30f, tween(180))
+                highlightAlpha.animateTo(0f,    tween(300))
+            }
+        } else {
+            highlightAlpha.snapTo(0f)
+        }
+    }
 
     Row(
         modifier = modifier
@@ -70,6 +85,14 @@ fun MessageBubble(
                         detectTapGestures(onLongPress = { onLongPress(message) })
                     },
             ) {
+                // ── Blink highlight overlay ───────────────────────────────────
+                if (highlightAlpha.value > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.White.copy(alpha = highlightAlpha.value))
+                    )
+                }
                 Column {
                     // ── Reply preview (inside bubble, WhatsApp-style) ─────────
                     if (message.replyTo != null) {
