@@ -22,14 +22,16 @@ import com.sleek.app.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onBack:    () -> Unit,
-    viewModel: ProfileViewModel = hiltViewModel(),
+    onBack:      () -> Unit,
+    onLoggedOut: () -> Unit,
+    viewModel:   ProfileViewModel = hiltViewModel(),
 ) {
-    val me       by viewModel.me.collectAsStateWithLifecycle()
+    val me        by viewModel.me.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val loggedOut by viewModel.loggedOut.collectAsStateWithLifecycle()
 
     LaunchedEffect(loggedOut) {
-        if (loggedOut) onBack() // MainActivity will detect no token and show Login
+        if (loggedOut) onLoggedOut()
     }
 
     Scaffold(

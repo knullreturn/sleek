@@ -64,12 +64,6 @@ fun LoginScreen(
                         letterSpacing = 8.sp,
                     ),
                 )
-                Text(
-                    text      = "Private. Fast. Beautiful.",
-                    style     = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                    color     = TextSecondary,
-                )
             }
 
             Spacer(Modifier.height(16.dp))
@@ -112,11 +106,14 @@ fun LoginScreen(
                     )
                 } else {
                     Row(
-                        verticalAlignment      = Alignment.CenterVertically,
-                        horizontalArrangement  = Arrangement.spacedBy(12.dp),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        // Google "G" logo colours
-                        GoogleLogo()
+                        androidx.compose.foundation.Image(
+                            painter            = androidx.compose.ui.res.painterResource(com.sleek.app.R.drawable.ic_google),
+                            contentDescription = "Google",
+                            modifier           = androidx.compose.ui.Modifier.size(20.dp),
+                        )
                         Text(
                             text  = "Continue with Google",
                             style = MaterialTheme.typography.titleMedium.copy(
@@ -205,30 +202,6 @@ fun OnboardingScreen(
     }
 }
 
-// ── Google "G" logo ───────────────────────────────────────────────────────────
-@Composable
-private fun GoogleLogo() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp)) {
-        val w = size.width
-        val h = size.height
-        // Simplified G letter in brand colours
-        drawArc(
-            color      = Color(0xFF4285F4),
-            startAngle = 0f,
-            sweepAngle = -360f,
-            useCenter  = false,
-            style      = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.15f),
-        )
-    }
-    // Simple text "G" as fallback — Compose canvas arc above handles the shape
-    Text(
-        text  = "G",
-        style = MaterialTheme.typography.titleMedium.copy(
-            color    = Color(0xFF4285F4),
-            fontSize = 18.sp,
-        ),
-    )
-}
 
 // ── Shared outlined text field ─────────────────────────────────────────────
 @Composable

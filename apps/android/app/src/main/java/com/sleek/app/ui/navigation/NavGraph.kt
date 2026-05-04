@@ -82,7 +82,14 @@ fun NavGraph(
 
         // ── Profile ───────────────────────────────────────────────────────────
         composable(Screen.Profile.route) {
-            ProfileScreen(onBack = { navController.popBackStack() })
+            ProfileScreen(
+                onBack      = { navController.popBackStack() },
+                onLoggedOut = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }   // clear entire back stack
+                    }
+                },
+            )
         }
 
         // ── Chat ──────────────────────────────────────────────────────────────
