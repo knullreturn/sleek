@@ -8,9 +8,10 @@ import { Pin } from 'lucide-react';
 export interface MessageBubbleProps {
   message:       any;
   isOwn:         boolean;
-  showMeta:      boolean;   // show avatar + sender name (false for grouped messages)
+  showMeta:      boolean;
   replyTo:       any | null;
   isEditing:     boolean;
+  isSeen:        boolean;   // true when peer has read this message and hasn't replied yet
   onContextMenu: (e: React.MouseEvent, message: any) => void;
   onScrollTo:    (id: string) => void;
   onEditSave:    (newContent: string) => void;
@@ -99,7 +100,7 @@ export function MessageSkeleton({ own, width }: { own?: boolean; width: string }
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 export function MessageBubble({
-  message, isOwn, showMeta, replyTo,
+  message, isOwn, showMeta, replyTo, isSeen,
   isEditing, onContextMenu, onScrollTo, onEditSave, onEditCancel,
 }: MessageBubbleProps) {
   const [peekOriginal, setPeekOriginal] = useState(false);
@@ -167,7 +168,9 @@ export function MessageBubble({
                   onPeekEnd={() => setPeekOriginal(false)}
                 />
               )}
-              <span className="msg-meta-time">{formatMessageTime(message.createdAt)}</span>
+              <span className={`msg-meta-time${isSeen ? ' seen' : ''}`}>
+                {formatMessageTime(message.createdAt)}
+              </span>
             </span>
           </div>
         )}

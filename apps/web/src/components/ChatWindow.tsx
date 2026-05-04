@@ -4,6 +4,7 @@ import { MessageContextMenu } from './MessageContextMenu';
 import { MessageBubble, MessageSkeleton } from './MessageBubble';
 import { ReplyBar } from './ReplyComponents';
 import { ChatInput } from './ChatInput';
+import { ScrollToBottomBtn } from './ScrollToBottomBtn';
 import { formatDateSeparator, isSameDay, getDmPeer } from '../lib/utils';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
@@ -19,6 +20,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const messages  = useChatStore((s) => s.messages[chatId] ?? EMPTY_MESSAGES);
   const typingMap = useChatStore((s) => s.typing[chatId]  ?? EMPTY_TYPING);
   const chats     = useChatStore((s) => s.chats);
+  const seenUpToId = useChatStore((s) => s.seenUpTo[chatId] ?? null);
   const { sendMessage, sendTyping, isLoading } = useMessages(chatId);
 
   const activeChat  = useMemo(() => chats.find((c) => c.id === chatId), [chats, chatId]);
@@ -32,12 +34,15 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const [replyingTo,   setReplyingTo]  = useState<any | null>(null);
   const [editingId,    setEditingId]   = useState<string | null>(null);
   const [contextMenu,  setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [newMsgCount,  setNewMsgCount]  = useState(0);
 
   const typingTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef         = useRef<HTMLDivElement>(null);
   const canvasRef         = useRef<HTMLDivElement>(null);
   const textareaRef       = useRef<HTMLTextAreaElement>(null);
   const initialScrollDone = useRef(false);
+  const isScrolledUpRef   = useRef(false);  // ref for use inside effects without stale closure
 
   // ── Socket room ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -51,10 +56,29 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     setReplyingTo(null);
     setContextMenu(null);
     setEditingId(null);
+    setIsScrolledUp(false);
+    setNewMsgCount(0);
+    isScrolledUpRef.current = false;
     initialScrollDone.current = false;
   }, [chatId]);
 
-  // ── Scroll: jump on first load, proximity-check for new messages ───────────
+  // ── Scroll event: track if user is scrolled up ─────────────────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onScroll = () => {
+      const distFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
+      const scrolledUp = distFromBottom > 120;
+      setIsScrolledUp(scrolledUp);
+      isScrolledUpRef.current = scrolledUp;
+      // Clear count when they scroll back down
+      if (!scrolledUp) setNewMsgCount(0);
+    };
+    canvas.addEventListener('scroll', onScroll, { passive: true });
+    return () => canvas.removeEventListener('scroll', onScroll);
+  }, [chatId]);
+
+  // ── Scroll: jump on first load; auto-scroll or count new messages ──────────
   useEffect(() => {
     if (messages.length === 0) return;
     if (!initialScrollDone.current) {
@@ -62,12 +86,17 @@ export function ChatWindow({ chatId }: { chatId: string }) {
       initialScrollDone.current = true;
       return;
     }
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    if (canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight < 120) {
+    const lastMsg = messages[messages.length - 1];
+    const isOwnMessage = lastMsg?.senderId === user?.id;
+
+    if (isScrolledUpRef.current && !isOwnMessage) {
+      // User is reading old messages — show FAB count instead of auto-scrolling
+      setNewMsgCount((c) => c + 1);
+    } else {
+      // Near bottom or own message sent — auto-scroll
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, user?.id]);
 
   // ── Scroll: keep bottom in view when typing indicator appears ─────────────
   useEffect(() => {
@@ -79,7 +108,40 @@ export function ChatWindow({ chatId }: { chatId: string }) {
     }
   }, [typingNames]);
 
+  // ── Read receipts: emit mark_seen when chat is visible ─────────────────────
+  useEffect(() => {
+    const emitSeen = () => {
+      if (document.visibilityState !== 'visible') return;
+      // Find the last message from the peer (not from us)
+      const lastPeerMsg = [...messages].reverse().find((m) => m.senderId !== user?.id);
+      if (lastPeerMsg) {
+        getSocket()?.emit('mark_seen', { chatId, messageId: lastPeerMsg.id });
+      }
+    };
+    emitSeen();
+    document.addEventListener('visibilitychange', emitSeen);
+    return () => document.removeEventListener('visibilitychange', emitSeen);
+  }, [chatId, messages, user?.id]);
+
+  // ── Seen index: which of our messages has the peer read up to? ─────────────
+  // Map message IDs to their flat index for O(1) lookup
+  const msgIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    messages.forEach((m, i) => map.set(m.id, i));
+    return map;
+  }, [messages]);
+
+  const seenUpToIdx = useMemo(() => {
+    if (!seenUpToId) return -1;
+    return msgIndexMap.get(seenUpToId) ?? -1;
+  }, [seenUpToId, msgIndexMap]);
+
   // ── Handlers ───────────────────────────────────────────────────────────────
+
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setNewMsgCount(0);
+  }, []);
 
   const handleSend = useCallback(() => {
     if (!input.trim()) return;
@@ -147,6 +209,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
+      {/* Canvas — the scrollable message area */}
       <div ref={canvasRef} className="chat-canvas" id="chat-canvas">
 
         {/* Loading skeletons */}
@@ -182,12 +245,17 @@ export function ChatWindow({ chatId }: { chatId: string }) {
               const isOwn    = msg.senderId === user?.id;
               const prev     = dayMsgs[i - 1];
               const showMeta = !prev || prev.senderId !== msg.senderId;
+              // Flat index of this message in the full messages array
+              const flatIdx  = msgIndexMap.get(msg.id) ?? -1;
+              // Green timestamp: own message + peer has seen up to or past this one
+              const isSeen   = isOwn && seenUpToIdx >= 0 && flatIdx <= seenUpToIdx;
               return (
                 <MessageBubble
                   key={msg.id}
                   message={msg}
                   isOwn={isOwn}
                   showMeta={showMeta}
+                  isSeen={isSeen}
                   isEditing={editingId === msg.id}
                   onContextMenu={(e, m) => {
                     e.preventDefault();
@@ -210,6 +278,11 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Scroll-to-bottom FAB — shown when scrolled up */}
+      {isScrolledUp && (
+        <ScrollToBottomBtn count={newMsgCount} onClick={scrollToBottom} />
+      )}
 
       {/* Reply bar */}
       {replyingTo && (

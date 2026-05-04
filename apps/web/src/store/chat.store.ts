@@ -32,10 +32,11 @@ interface TypingState {
 
 interface ChatState {
   chats: Chat[];
-  messages: Record<string, Message[]>; // chatId -> messages
+  messages: Record<string, Message[]>;
   activeChatId: string | null;
   typing: TypingState;
   onlineUsers: Set<string>;
+  seenUpTo: Record<string, string | null>;  // chatId → last messageId seen by peer
 
   setChats:       (chats: Chat[]) => void;
   upsertChat:     (chat: Chat) => void;
@@ -46,6 +47,7 @@ interface ChatState {
   updateMessage:  (chatId: string, patch: Partial<Message> & { id: string }) => void;
   setTyping:      (chatId: string, userId: string, username: string, isTyping: boolean) => void;
   setUserOnline:  (userId: string, online: boolean) => void;
+  setSeenUpTo:    (chatId: string, messageId: string | null) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -54,6 +56,7 @@ export const useChatStore = create<ChatState>((set) => ({
   activeChatId: null,
   typing: {},
   onlineUsers: new Set(),
+  seenUpTo: {},
 
   setChats: (chats) => set({ chats }),
 
@@ -135,4 +138,7 @@ export const useChatStore = create<ChatState>((set) => ({
       if (online) next.add(userId); else next.delete(userId);
       return { onlineUsers: next };
     }),
+
+  setSeenUpTo: (chatId, messageId) =>
+    set((state) => ({ seenUpTo: { ...state.seenUpTo, [chatId]: messageId } })),
 }));
