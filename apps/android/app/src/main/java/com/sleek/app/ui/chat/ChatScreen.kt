@@ -344,6 +344,7 @@ fun ChatScreen(
                             }
                         }
                 }
+            }   // end else
             }   // end AnimatedVisibility
         }
     }
