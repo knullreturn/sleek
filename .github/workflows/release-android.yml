@@ -63,27 +63,27 @@ jobs:
           cp apps/android/app/build/outputs/apk/release/app-release.apk \
              sleek.apk
 
-      # ── Create GitHub Release and attach both APKs ────────────────────────────
+      # ── Create GitHub Release and attach both APKs (using gh CLI — more reliable) ─
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "SLEEK ${{ steps.version.outputs.VERSION }}"
-          body: |
-            ## SLEEK Android ${{ steps.version.outputs.VERSION }}
-
-            ### How to install
-            1. Download **sleek-${{ steps.version.outputs.VERSION }}.apk** below
-            2. Open the file on your Android device
-            3. Allow **"Install unknown apps"** if prompted
-            4. Tap **Install** — done!
-
-            **Requirements:** Android 8.0+ (API 26)
-
-          files: |
-            sleek-${{ steps.version.outputs.VERSION }}.apk
-            sleek.apk
-          draft: false
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+
+          # Delete any existing release for this tag (clean re-release support)
+          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null || true
+
+          # Create release with both APKs in one atomic command
+          gh release create "$VERSION" \
+            sleek-${VERSION}.apk \
+            sleek.apk \
+            --title "SLEEK ${VERSION}" \
+            --notes "## SLEEK Android ${VERSION}
+
+### How to install
+1. Download **sleek-${VERSION}.apk** below
+2. Open the file on your Android device
+3. Allow **\"Install unknown apps\"** if prompted
+4. Tap **Install** — done!
+
+**Requirements:** Android 8.0+ (API 26)"
