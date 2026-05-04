@@ -16,8 +16,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -152,38 +155,48 @@ fun MessageBubble(
                         ),
                     )
                 } else {
-                    Column {
-                        // Message text — key triggers recompose for peek animation
-                        key(peekOriginal) {
-                            AnimatedContent(
-                                targetState   = displayText,
-                                transitionSpec = {
-                                    fadeIn(tween(180)) togetherWith fadeOut(tween(120))
-                                },
-                                label = "message_text",
-                            ) { text ->
-                                Text(
-                                    text  = text,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                )
-                            }
-                        }
+                    // ── WhatsApp-style inline timestamp ─────────────────────
+                    // The timestamp lives at BottomEnd of a Box;
+                    // the text has an invisible trailing spacer that reserves
+                    // exactly enough room so the time sits on the last line.
+                    val timeStr   = formatBubbleTime(message.createdAt)
+                    val timeColor by animateColorAsState(
+                        targetValue   = if (isSeen) SeenGreen
+                                        else if (isOwn) TextPrimary.copy(alpha = 0.45f)
+                                        else TextMuted,
+                        animationSpec = tween(500),
+                        label         = "seen_color",
+                    )
+                    // Trailing spacer text = timestamp width (+ "edited " if applicable)
+                    val trailingSpacer = if (canPeek) "  edited  $timeStr" else "  $timeStr"
 
-                        // Meta row: edited tag + timestamp
+                    Box {
+                        // Message text with invisible trailing spacer
+                        Text(
+                            text  = buildAnnotatedString {
+                                append(displayText)
+                                withStyle(SpanStyle(color = Color.Transparent)) {
+                                    append(trailingSpacer)
+                                }
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+
+                        // Timestamp overlaid at bottom-right
                         Row(
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .padding(top = 4.dp),
+                            modifier              = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(start = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment     = Alignment.CenterVertically,
                         ) {
-                            // Edited tag — hold to peek
+                            // Edited tag — hold to peek original
                             if (canPeek) {
                                 Text(
                                     text  = if (peekOriginal) "original" else "edited",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = if (isOwn) TextPrimary.copy(alpha = 0.65f) else TextSecondary,
-                                        fontStyle = FontStyle.Italic,
+                                        color          = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                                        fontStyle      = FontStyle.Italic,
                                         textDecoration = TextDecoration.Underline,
                                     ),
                                     modifier = Modifier.pointerInput(Unit) {
@@ -198,15 +211,8 @@ fun MessageBubble(
                                 )
                             }
 
-                            // Timestamp
-                            val timeColor by animateColorAsState(
-                                targetValue = if (isSeen) SeenGreen else
-                                    if (isOwn) TextPrimary.copy(alpha = 0.45f) else TextMuted,
-                                animationSpec = tween(500),
-                                label = "seen_color",
-                            )
                             Text(
-                                text  = formatBubbleTime(message.createdAt),
+                                text  = timeStr,
                                 style = MaterialTheme.typography.labelSmall.copy(color = timeColor),
                             )
                         }

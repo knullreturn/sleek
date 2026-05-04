@@ -59,10 +59,17 @@ fun ChatScreen(
         state.messages.lastOrNull()?.senderId != myId
     }
 
-    // Auto-scroll to bottom on new messages
+    // Auto-scroll to bottom — only on initial load + new messages, not every recompose
+    val initialScrollDone = remember { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading) {
+        if (!state.isLoading && !initialScrollDone.value && state.messages.isNotEmpty()) {
+            listState.scrollToItem(state.messages.size - 1)  // instant, no animation on load
+            initialScrollDone.value = true
+        }
+    }
     LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.size - 1)
+        if (initialScrollDone.value && state.messages.isNotEmpty()) {
+            listState.animateScrollToItem(state.messages.size - 1)  // animate only new messages
         }
     }
 
@@ -106,18 +113,12 @@ fun ChatScreen(
                             }
                         }
 
-                        // Name + tag
+                        // Name only — no tag
                         Column {
                             Text(
                                 text  = peer?.username ?: chatName,
                                 style = MaterialTheme.typography.titleMedium,
                             )
-                            if (peer?.tag != null) {
-                                Text(
-                                    text  = "#${peer.tag}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
                         }
                     }
                 },
@@ -228,75 +229,82 @@ fun ChatScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (state.isLoading) {
-                // Skeleton bubbles
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    repeat(5) { i ->
-                        val isOwn = i % 2 == 0
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(if (isOwn) 0.55f else 0.5f)
-                                    .height(42.dp)
-                                    .background(SurfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther)
-                            )
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(
-                    state   = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                ) {
-                    // Group by date
-                    val grouped = groupByDate(state.messages)
-                    grouped.forEach { (dateLabel, msgs) ->
-                        // Date separator
-                        item(key = "sep_$dateLabel") {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center,
+            // Smooth crossfade between skeleton and real content
+            AnimatedContent(
+                targetState   = state.isLoading,
+                transitionSpec = {
+                    fadeIn(tween(300)) togetherWith fadeOut(tween(200))
+                },
+                label = "chat_content",
+            ) { loading ->
+                if (loading) {
+                    // Skeleton bubbles
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        repeat(5) { i ->
+                            val isOwn = i % 2 == 0
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .background(SurfaceMid, MaterialTheme.shapes.small)
-                                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                                        .fillMaxWidth(if (isOwn) 0.55f else 0.5f)
+                                        .height(42.dp)
+                                        .background(SurfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        state          = listState,
+                        modifier       = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        val grouped = groupByDate(state.messages)
+                        grouped.forEach { (dateLabel, msgs) ->
+                            // Date separator
+                            item(key = "sep_$dateLabel") {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Text(dateLabel, style = MaterialTheme.typography.labelSmall)
+                                    Box(
+                                        modifier = Modifier
+                                            .background(SurfaceMid, MaterialTheme.shapes.small)
+                                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                                    ) {
+                                        Text(dateLabel, style = MaterialTheme.typography.labelSmall)
+                                    }
                                 }
+                            }
+
+                            // Messages — NO animateItem() to prevent blink on initial load
+                            itemsIndexed(msgs, key = { _, m -> m.id }) { index, msg ->
+                                val isOwn      = msg.senderId == myId
+                                val prev       = if (index > 0) msgs[index - 1] else null
+                                val showAvatar = prev == null || prev.senderId != msg.senderId
+                                val isSeen     = isOwn && !peerHasReplied && msg.id == state.seenUpToId
+
+                                MessageBubble(
+                                    message     = msg,
+                                    isOwn       = isOwn,
+                                    showAvatar  = showAvatar,
+                                    isSeen      = isSeen,
+                                    onLongPress = { /* TODO: context menu */ },
+                                    onReplyTap  = { /* TODO: scroll to */ },
+                                )
                             }
                         }
 
-                        // Messages
-                        itemsIndexed(msgs, key = { _, m -> m.id }) { index, msg ->
-                            val isOwn     = msg.senderId == myId
-                            val prev      = if (index > 0) msgs[index - 1] else null
-                            val showAvatar = prev == null || prev.senderId != msg.senderId
-                            val isSeen    = isOwn && !peerHasReplied && msg.id == state.seenUpToId
-
-                            MessageBubble(
-                                message     = msg,
-                                isOwn       = isOwn,
-                                showAvatar  = showAvatar,
-                                isSeen      = isSeen,
-                                onLongPress = { /* TODO: context menu */ },
-                                onReplyTap  = { /* TODO: scroll to */ },
-                                modifier    = Modifier.animateItem(),
-                            )
-                        }
-                    }
-
-                    // Typing indicator
-                    if (state.typingUsers.isNotEmpty()) {
-                        item(key = "typing") {
-                            TypingIndicator(names = state.typingUsers)
+                        // Typing indicator
+                        if (state.typingUsers.isNotEmpty()) {
+                            item(key = "typing") {
+                                TypingIndicator(names = state.typingUsers)
+                            }
                         }
                     }
                 }

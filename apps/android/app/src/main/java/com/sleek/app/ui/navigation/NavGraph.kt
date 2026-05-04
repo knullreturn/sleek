@@ -1,5 +1,7 @@
 package com.sleek.app.ui.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -12,6 +14,9 @@ import com.sleek.app.ui.chat.ChatScreen
 import com.sleek.app.ui.chatlist.ChatListScreen
 import com.sleek.app.ui.profile.ProfileScreen
 
+private val slideSpec = tween<IntOffset>(320, easing = FastOutSlowInEasing)
+private val fadeSpec  = tween<Float>(220, easing = FastOutSlowInEasing)
+
 @Composable
 fun NavGraph(
     navController:    NavHostController,
@@ -22,7 +27,21 @@ fun NavGraph(
         navController    = navController,
         startDestination = startDestination,
         modifier         = modifier,
+        // ── Default transitions: horizontal slide like Telegram/WhatsApp ───────
+        enterTransition = {
+            slideInHorizontally(slideSpec) { it } + fadeIn(fadeSpec)
+        },
+        exitTransition = {
+            slideOutHorizontally(slideSpec) { -it / 4 } + fadeOut(fadeSpec)
+        },
+        popEnterTransition = {
+            slideInHorizontally(slideSpec) { -it / 4 } + fadeIn(fadeSpec)
+        },
+        popExitTransition = {
+            slideOutHorizontally(slideSpec) { it } + fadeOut(fadeSpec)
+        },
     ) {
+        // ── Login ─────────────────────────────────────────────────────────────
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
@@ -38,6 +57,7 @@ fun NavGraph(
             )
         }
 
+        // ── Onboarding ────────────────────────────────────────────────────────
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onDone = {
@@ -48,6 +68,7 @@ fun NavGraph(
             )
         }
 
+        // ── Chat list ─────────────────────────────────────────────────────────
         composable(Screen.ChatList.route) {
             ChatListScreen(
                 onOpenChat    = { chatId, chatName ->
@@ -57,10 +78,12 @@ fun NavGraph(
             )
         }
 
+        // ── Profile ───────────────────────────────────────────────────────────
         composable(Screen.Profile.route) {
             ProfileScreen(onBack = { navController.popBackStack() })
         }
 
+        // ── Chat ──────────────────────────────────────────────────────────────
         composable(
             route = Screen.Chat.route,
             arguments = listOf(
