@@ -9,6 +9,7 @@ import { registerSocketServer } from './socket/index';
 import { authRoutes } from './routes/auth';
 import { userRoutes } from './routes/users';
 import { chatRoutes } from './routes/chats';
+import { initFirebaseAdmin } from './lib/firebase';
 
 async function bootstrap() {
   const app = Fastify({
@@ -83,6 +84,9 @@ async function bootstrap() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+
+  // Init Firebase Admin (safe — won't crash if package missing or env not set)
+  initFirebaseAdmin().catch(() => {});
 }
 
 bootstrap().catch((err) => {
