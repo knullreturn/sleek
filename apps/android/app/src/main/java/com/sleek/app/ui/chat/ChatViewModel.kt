@@ -9,6 +9,7 @@ import com.sleek.app.data.remote.ApiService
 import com.sleek.app.data.remote.SocketEvent
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.data.repository.MessageRepository
+import com.sleek.app.notification.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -42,6 +43,8 @@ class ChatViewModel @Inject constructor(
 
     fun init(chatId: String) {
         if (currentChatId == chatId) return
+        // Mark this chat as active → suppresses its notifications
+        NotificationHelper.activeChatId = chatId
         currentChatId = chatId
         socketManager.joinChat(chatId)
         observeSocket()
@@ -84,6 +87,7 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        NotificationHelper.activeChatId = null  // resume notifications when chat is left
         socketManager.leaveChat(currentChatId)
     }
 

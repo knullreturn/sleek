@@ -9,6 +9,7 @@ import com.sleek.app.data.remote.ApiService
 import com.sleek.app.data.remote.SocketEvent
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.data.repository.MessageRepository
+import com.sleek.app.notification.NotificationHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
@@ -18,10 +19,11 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
-    private val apiService:        ApiService,
-    private val tokenDataStore:    TokenDataStore,
-    private val socketManager:     SocketManager,
-    private val messageRepository: MessageRepository,   // for prefetch
+    private val apiService:          ApiService,
+    private val tokenDataStore:      TokenDataStore,
+    private val socketManager:       SocketManager,
+    private val messageRepository:   MessageRepository,
+    private val notificationHelper:  NotificationHelper,
 ) : ViewModel() {
 
     private val _chats     = MutableStateFlow<List<Chat>>(emptyList())
@@ -82,7 +84,11 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val res = apiService.getMe()
-                if (res.isSuccessful) _me.value = res.body()
+                if (res.isSuccessful) {
+                    _me.value = res.body()
+                    // Keep NotificationHelper in sync so it can filter own messages
+                    NotificationHelper.myUserId = _me.value?.id
+                }
             } catch (_: Exception) {}
         }
     }
@@ -134,15 +140,28 @@ class ChatListViewModel @Inject constructor(
             socketManager.events.collect { event ->
                 when (event) {
                     is SocketEvent.MessageReceived -> {
-                        val msg = event.message
+                        val msg      = event.message
+                        val myUserId = _me.value?.id
                         viewModelScope.launch { messageRepository.upsert(msg) }
 
-                        // Increment unread only for messages from peers (not our own)
-                        val myUserId = _me.value?.id
+                        // Increment unread for peer messages
                         if (msg.senderId != myUserId) {
                             _unreadCounts.update { counts ->
                                 counts + (msg.chatId to ((counts[msg.chatId] ?: 0) + 1))
                             }
+
+                            // Show heads-up notification (suppressed if that chat is open)
+                            val senderName = msg.sender.username ?: "Someone"
+                            val content    = if (msg.deletedAt != null) "Deleted a message" else msg.content
+                            val chatName   = _chats.value.find { it.id == msg.chatId }
+                                ?.members?.firstOrNull { it.id != myUserId }?.username ?: senderName
+                            notificationHelper.showMessageNotification(
+                                senderName = senderName,
+                                content    = content,
+                                chatId     = msg.chatId,
+                                chatName   = chatName,
+                                notifId    = msg.chatId.hashCode(),  // one notif per chat
+                            )
                         }
 
                         val chatExists = _chats.value.any { it.id == msg.chatId }
