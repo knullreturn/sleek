@@ -1,0 +1,56 @@
+﻿/* ── Typing Indicator (message row style) ──────────────────────────────────── */
+.typing-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 4px 0;
+  animation: slideUp 180ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.typing-bubble {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  backdrop-filter: blur(10px);
+}
+
+.mini-keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  width: 34px;
+  gap: 3px;
+  justify-content: center;
+}
+
+.m-key {
+  width: 9px;
+  height: 9px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+  animation: keyPress 0.6s infinite;
+}
+/* Stagger so they don't all press at once, but start immediately */
+.m-key.delay-1 { animation-delay: 0s;    animation-duration: 0.55s; }
+.m-key.delay-2 { animation-delay: 0.1s;  animation-duration: 0.65s; }
+.m-key.delay-3 { animation-delay: 0.05s; animation-duration: 0.5s;  }
+.m-key.delay-4 { animation-delay: 0.15s; animation-duration: 0.7s;  }
+.m-key.delay-5 { animation-delay: 0.08s; animation-duration: 0.6s;  }
+
+@keyframes keyPress {
+  0%, 70%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+    background: var(--bg-hover);
+  }
+  85% {
+    transform: translateY(2px);
+    box-shadow: none;
+    background: var(--accent);
+  }
+}
+

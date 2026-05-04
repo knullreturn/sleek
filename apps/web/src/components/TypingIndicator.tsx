@@ -2,18 +2,16 @@ import React from 'react';
 import { Avatar } from './Avatar';
 
 interface TypingIndicatorProps {
-  names: string[];
-  avatarUrl?: string;
+  names:         string[];
+  avatarUrl?:    string;
   avatarUsername?: string;
+  fadingOut?:    boolean;   // keeps element mounted but plays exit animation
 }
 
-export function TypingIndicator({ names, avatarUrl, avatarUsername }: TypingIndicatorProps) {
-  if (names.length === 0) return null;
-
+export function TypingIndicator({ names, avatarUrl, avatarUsername, fadingOut }: TypingIndicatorProps) {
   return (
-    <div className="typing-message-row">
+    <div className={`typing-message-row${fadingOut ? ' fading-out' : ''}`}>
       <Avatar src={avatarUrl} username={avatarUsername || '?'} size="sm" />
-
       <div className="typing-bubble">
         <div className="mini-keyboard">
           <div className="m-key delay-1" />

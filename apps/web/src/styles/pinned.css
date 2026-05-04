@@ -1,0 +1,195 @@
+﻿}
+.msg-bubble.own.msg-bubble-deleted { background: transparent !important; }
+.msg-deleted-text {
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* Pinned panel: pinned-by credit */
+.pinned-card-pinby {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+.pinned-card-pinby strong { color: var(--text-secondary); }
+
+/* -- Press-and-hold peek at original message ---------------------------------- */
+
+/* "edited" tag base */
+.edited-tag {
+  font-size: 10px;
+  font-weight: 600;
+  font-style: italic;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms, color 120ms, border-color 120ms, transform 80ms;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.edited-tag:hover {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.8);
+}
+/* Active / held state */
+.edited-tag.peeking {
+  background: rgba(124,92,252,0.25);
+  border-color: rgba(124,92,252,0.6);
+  color: var(--accent);
+  transform: scale(0.93);
+}
+
+/* Content fade when swapping */
+@keyframes contentPeek {
+  from { opacity: 0.3; }
+  to   { opacity: 1; }
+}
+.msg-content-text { animation: contentPeek 120ms ease both; }
+
+/* Bubble highlight when peeking */
+.msg-bubble.peeking-bubble {
+  outline: 1.5px solid rgba(124,92,252,0.45);
+  outline-offset: 1px;
+}
+
+/* -- Message meta row (timestamp + edited tag) ------------------------------- */
+.msg-meta-row {
+  float: right;
+  font-size: 10px;
+  opacity: 0.55;
+  margin-left: 8px;
+  margin-top: 4px;
+  position: relative;
+  top: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.msg-meta-time { line-height: 1; }
+
+/* -- msg-meta-row: override to match original float-right inline style --------- */
+.msg-meta-row {
+  float: right;
+  font-size: 10px !important;
+  opacity: 0.55;
+  margin-left: 8px;
+  margin-top: 4px;
+  position: relative;
+  top: 3px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.msg-meta-time {
+  font-size: 10px;
+  line-height: 1;
+}
+/* Edited tag must stay compact and inline � same visual weight as timestamp */
+.edited-tag {
+  font-size: 10px !important;
+  padding: 0px 4px !important;
+  border-radius: 4px !important;
+  line-height: 1.4 !important;
+}
+
+/* -- Message bubble highlight (jump-to) --------------------------------------- */
+/* Applied to .msg-bubble directly � works on both own (purple) and other (dark) */
+
+@keyframes bubbleFlash {
+  0%   { filter: brightness(1.9); }
+  40%  { filter: brightness(1.5); }
+  100% { filter: brightness(1);   }
+}
+
+.msg-bubble.msg-highlight {
+  animation: bubbleFlash 1.6s cubic-bezier(0.25, 0, 0.3, 1) forwards;
+}
+
+/* -- Read receipt: seen timestamp --------------------------------------------- */
+.msg-meta-time {
+  transition: color 0.5s ease;
+}
+.msg-meta-time.seen {
+  color: #4ade80;   /* green-400: visible on both purple and dark bubbles */
+}
+
+/* -- Scroll-to-bottom FAB ----------------------------------------------------- */
+.scroll-to-bottom-btn {
+  position: absolute;
+  bottom: 80px;          /* above the input bar */
+  right: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  animation: fabSlideUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.scroll-to-bottom-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.scroll-btn-count {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+@keyframes fabSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* FAB anchor � chat-canvas must be relative so FAB positions inside it */
+.chat-canvas { position: relative; }
+
+/* -- Fix: remove parent opacity so seen-green renders at full strength --------
+   The old msg-meta-row had opacity:0.55 which washed out the green on purple.
+   We now set explicit dim color on the time span itself instead.             */
+.msg-meta-row {
+  opacity: 1 !important;    /* override the 0.55 previously set */
+}
+.msg-meta-time {
+  color: rgba(255, 255, 255, 0.45);   /* dim by default on all bubbles */
+  transition: color 0.45s ease;
+}
+.msg-meta-time.seen {
+  color: #4ade80;   /* solid green � full opacity, visible on purple + dark */
+}
+
+/* Typing indicator exit animation */
+.typing-message-row.fading-out {
+  animation: typingFadeOut 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes typingFadeOut {
+  from { opacity: 1; transform: translateY(0);   max-height: 60px; }
+  to   { opacity: 0; transform: translateY(6px); max-height: 0;    }
+}

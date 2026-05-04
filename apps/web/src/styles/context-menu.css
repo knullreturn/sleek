@@ -1,0 +1,130 @@
+﻿/* -- Copy tick animation ------------------------------------------------------ */
+@keyframes tickPop {
+  0%   { opacity: 0; transform: scale(0.4) rotate(-20deg); }
+  60%  { transform: scale(1.25) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.ctx-tick {
+  animation: tickPop 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  color: #4ade80;
+}
+.ctx-item.copied {
+  color: #4ade80 !important;
+  background: rgba(74, 222, 128, 0.08) !important;
+  pointer-events: none;
+}
+
+/* -- Reply Chip (Concept C) --------------------------------------------------- */
+@keyframes chipIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.9); }
+  to   { opacity: 1; transform: none; }
+}
+
+.reply-chip-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  animation: chipIn 200ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.reply-chip-wrap.own { align-items: flex-end; }
+
+.reply-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  padding: 4px 10px 4px 5px;
+  cursor: default;
+  max-width: 260px;
+  overflow: hidden;
+  transition: border-color 150ms;
+}
+.reply-chip:hover { border-color: var(--accent); }
+
+.reply-chip-avatar {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.reply-chip-name {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-primary); white-space: nowrap;
+}
+.reply-chip-dot {
+  font-size: 11px; color: var(--text-muted);
+}
+.reply-chip-text {
+  font-size: 11px; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Connecting line from chip to bubble */
+.reply-chip-line {
+  width: 1px; height: 8px;
+  background: var(--border-subtle);
+  margin-left: 14px;
+}
+.reply-chip-wrap.own .reply-chip-line { margin-left: 0; margin-right: 14px; }
+
+/* -- Reply Bar (above input) -------------------------------------------------- */
+@keyframes replyBarIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-subtle);
+  animation: replyBarIn 180ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.reply-bar-accent {
+  width: 3px; height: 34px; border-radius: 3px;
+  background: var(--accent); flex-shrink: 0;
+}
+.reply-bar-body {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.reply-bar-label {
+  font-size: 11px; color: var(--text-muted);
+}
+.reply-bar-label strong { color: var(--accent); font-weight: 700; }
+.reply-bar-preview {
+  font-size: 12px; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* -- Message highlight (jump-to) ---------------------------------------------- */
+@keyframes msgHighlight {
+  0%   { background: rgba(124, 92, 252, 0);   }
+  20%  { background: rgba(124, 92, 252, 0.22); box-shadow: 0 0 0 6px rgba(124,92,252,0.08); }
+  70%  { background: rgba(124, 92, 252, 0.12); }
+  100% { background: rgba(124, 92, 252, 0);   box-shadow: none; }
+}
+.msg-highlight {
+  animation: msgHighlight 1.8s ease forwards;
+  border-radius: var(--radius-md);
+}
+
+/* Reply chip as button reset */
+button.reply-chip {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+button.reply-chip:hover { border-color: var(--accent); background: rgba(124,92,252,0.07); }
+button.reply-chip:active { transform: scale(0.97); }
+

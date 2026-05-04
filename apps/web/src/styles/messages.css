@@ -1,0 +1,217 @@
+﻿/* ── Message Bubble ────────────────────────────────────────────────────────── */
+.msg-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+.msg-group:hover .msg-actions { opacity: 1; }
+
+/* ── Message entrance animations ──────────────────────────────────────────── */
+@keyframes msgInOther {
+  0%   { opacity: 0; transform: translateX(-18px) translateY(8px) scale(0.88); }
+  65%  { transform: translateX(3px)  translateY(-2px) scale(1.025); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes msgInOwn {
+  0%   { opacity: 0; transform: translateX(18px) translateY(8px) scale(0.88); }
+  65%  { transform: translateX(-3px) translateY(-2px) scale(1.025); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes avatarFadeIn {
+  from { opacity: 0; transform: scale(0.7) translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.msg-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 2px 0;
+  animation: msgInOther 300ms cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+.msg-row.own {
+  flex-direction: row-reverse;
+  animation-name: msgInOwn;
+}
+/* Avatar pops in slightly delayed */
+.msg-row > div:first-child .avatar {
+  animation: avatarFadeIn 280ms cubic-bezier(0.34, 1.45, 0.64, 1) 40ms both;
+}
+
+.msg-bubble {
+  max-width: 65%;
+  padding: 9px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  line-height: 1.55;
+  word-wrap: break-word;
+  position: relative;
+  transition: opacity var(--transition-fast);
+}
+.msg-bubble.other {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-bottom-left-radius: var(--radius-sm);
+}
+.msg-bubble.own {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 0 4px;
+}
+.msg-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.msg-sender-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+/* ── Input ─────────────────────────────────────────────────────────────────── */
+.input-field {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  max-height: 160px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  line-height: 1.5;
+}
+.input-field:focus {
+  border-color: var(--accent);
+}
+.input-field::placeholder { color: var(--text-placeholder); }
+
+.send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), transform 150ms cubic-bezier(0.34,1.56,0.64,1), box-shadow var(--transition-fast);
+}
+.send-btn:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px var(--accent-glow);
+  transform: scale(1.08);
+}
+@keyframes sendLaunch {
+  0%   { transform: scale(0.82); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.send-btn:active  { animation: sendLaunch 220ms cubic-bezier(0.34,1.56,0.64,1); }
+.send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+/* ── Icon Button ───────────────────────────────────────────────────────────── */
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.icon-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* ── Empty State ───────────────────────────────────────────────────────────── */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-muted);
+}
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-secondary); }
+.empty-state p { font-size: 13px; text-align: center; max-width: 220px; line-height: 1.6; }
+
+/* ── Search Modal ──────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  animation: fadeIn var(--transition-fast) forwards;
+}
+.modal {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: slideDown var(--transition-base) forwards;
+}
+.modal-search-input {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 15px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+}
+.modal-search-input::placeholder { color: var(--text-placeholder); }
+.modal-results { max-height: 320px; overflow-y: auto; }
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.search-result-item:hover { background: var(--bg-hover); }
+.search-result-name { font-weight: 500; font-size: 14px; }
+.search-result-handle { font-size: 12px; color: var(--text-muted); }
+.search-empty { padding: 32px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+

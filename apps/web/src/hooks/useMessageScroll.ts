@@ -22,6 +22,7 @@ interface UseMessageScrollResult {
  *  - unread counter when scrolled up and peer sends a message
  *  - keeps view pinned when typing indicator appears
  *  - suppresses FAB during programmatic scrolls
+ *  - debounces FAB visibility to prevent flash from message fly-in animations
  */
 export function useMessageScroll({
   chatId,
@@ -34,6 +35,8 @@ export function useMessageScroll({
   const initialScrollDone    = useRef(false);
   const isScrolledUpRef      = useRef(false);
   const isProgrammaticScroll = useRef(false);
+  // Debounce timer — FAB only shows after user is scrolled up for 200ms continuously
+  const fabDebounceTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [newMsgCount,  setNewMsgCount]  = useState(0);
@@ -44,23 +47,45 @@ export function useMessageScroll({
     setNewMsgCount(0);
     isScrolledUpRef.current   = false;
     initialScrollDone.current = false;
+    if (fabDebounceTimer.current) clearTimeout(fabDebounceTimer.current);
   }, [chatId]);
 
-  // Track user scroll position
+  // Track user scroll position — debounce showing the FAB to avoid animation flashes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const onScroll = () => {
       if (isProgrammaticScroll.current) return;
+
       const distFromBottom = canvas.scrollHeight - canvas.scrollTop - canvas.clientHeight;
       const scrolledUp     = distFromBottom > 120;
-      setIsScrolledUp(scrolledUp);
+
       isScrolledUpRef.current = scrolledUp;
-      if (!scrolledUp) setNewMsgCount(0);
+
+      if (!scrolledUp) {
+        // Hide FAB instantly — no delay when scrolling back to bottom
+        if (fabDebounceTimer.current) clearTimeout(fabDebounceTimer.current);
+        setIsScrolledUp(false);
+        setNewMsgCount(0);
+      } else {
+        // Show FAB only after 200ms of being continuously scrolled up
+        // This swallows the brief blip caused by message fly-in animations
+        if (!isScrolledUp) {
+          if (fabDebounceTimer.current) clearTimeout(fabDebounceTimer.current);
+          fabDebounceTimer.current = setTimeout(() => {
+            if (isScrolledUpRef.current) setIsScrolledUp(true);
+          }, 200);
+        }
+      }
     };
+
     canvas.addEventListener('scroll', onScroll, { passive: true });
-    return () => canvas.removeEventListener('scroll', onScroll);
-  }, [chatId]);
+    return () => {
+      canvas.removeEventListener('scroll', onScroll);
+      if (fabDebounceTimer.current) clearTimeout(fabDebounceTimer.current);
+    };
+  }, [chatId, isScrolledUp]);
 
   // Initial load jump + auto-scroll on new messages
   useEffect(() => {
@@ -69,7 +94,7 @@ export function useMessageScroll({
     if (!initialScrollDone.current) {
       isProgrammaticScroll.current = true;
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-      setTimeout(() => { isProgrammaticScroll.current = false; }, 100);
+      setTimeout(() => { isProgrammaticScroll.current = false; }, 150);
       initialScrollDone.current = true;
       return;
     }
@@ -80,9 +105,10 @@ export function useMessageScroll({
     if (isScrolledUpRef.current && !isOwnMessage) {
       setNewMsgCount((c) => c + 1);
     } else {
+      // Set programmatic flag BEFORE the scroll so the event handler ignores it
       isProgrammaticScroll.current = true;
       bottomRef.current?.scrollIntoView({ behavior: 'instant' });
-      setTimeout(() => { isProgrammaticScroll.current = false; }, 100);
+      setTimeout(() => { isProgrammaticScroll.current = false; }, 150);
     }
   }, [messages, myId]);
 
@@ -99,6 +125,7 @@ export function useMessageScroll({
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     setNewMsgCount(0);
+    setIsScrolledUp(false);
   };
 
   return { canvasRef, bottomRef, isScrolledUp, newMsgCount, scrollToBottom };

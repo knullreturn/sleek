@@ -18,6 +18,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.wrapContentWidth
 import androidx.compose.foundation.Image
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,12 +61,28 @@ fun ChatListScreen(
             verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Image(
-                painter            = painterResource(id = R.drawable.header_logo),
-                contentDescription = "SLEEK",
-                modifier           = Modifier.height(28.dp).weight(1f),
-                contentScale       = ContentScale.Fit,
-            )
+            // Logo + wordmark — left side
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Image(
+                    painter            = painterResource(id = R.drawable.header_logo),
+                    contentDescription = "SLEEK logo",
+                    modifier           = Modifier.height(40.dp).wrapContentWidth(),
+                    contentScale       = ContentScale.Fit,
+                )
+                Text(
+                    text  = "SLEEK",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        color         = Accent,
+                        letterSpacing = 4.sp,
+                        fontWeight    = androidx.compose.ui.text.font.FontWeight.Bold,
+                    ),
+                )
+            }
+
+            // Avatar — right side
             Box(
                 modifier = Modifier.size(36.dp).clip(CircleShape).clickable { onOpenProfile() },
                 contentAlignment = Alignment.Center,

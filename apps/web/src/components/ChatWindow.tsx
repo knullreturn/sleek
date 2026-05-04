@@ -36,14 +36,37 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; message: any } | null>(null);
 
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const textareaRef      = useRef<HTMLTextAreaElement>(null);
+  const typingTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef       = useRef<HTMLTextAreaElement>(null);
+  const typingFadeTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Delayed unmount for typing indicator — keeps it alive for 350ms while fading
+  // out, so the height doesn't collapse before the new message fills the space.
+  const [visibleTyping, setVisibleTyping] = useState(false);
+  const [typingFadingOut, setTypingFadingOut] = useState(false);
+
+  useEffect(() => {
+    if (typingNames.length > 0) {
+      if (typingFadeTimer.current) clearTimeout(typingFadeTimer.current);
+      setVisibleTyping(true);
+      setTypingFadingOut(false);
+    } else if (visibleTyping) {
+      setTypingFadingOut(true);
+      typingFadeTimer.current = setTimeout(() => {
+        setVisibleTyping(false);
+        setTypingFadingOut(false);
+      }, 350);
+    }
+    return () => { if (typingFadeTimer.current) clearTimeout(typingFadeTimer.current); };
+  }, [typingNames, visibleTyping]);
 
   // Reset compose state on chat switch
   useEffect(() => {
     setReplyingTo(null);
     setContextMenu(null);
     setEditingId(null);
+    setVisibleTyping(false);
+    setTypingFadingOut(false);
   }, [chatId]);
 
   // ── Scroll (extracted hook) ────────────────────────────────────────────────
@@ -193,8 +216,13 @@ export function ChatWindow({ chatId }: { chatId: string }) {
           </React.Fragment>
         ))}
 
-        {typingNames.length > 0 && (
-          <TypingIndicator names={typingNames} avatarUrl={peer?.avatarUrl} avatarUsername={peer?.username} />
+        {visibleTyping && (
+          <TypingIndicator
+            names={typingNames}
+            avatarUrl={peer?.avatarUrl}
+            avatarUsername={peer?.username}
+            fadingOut={typingFadingOut}
+          />
         )}
 
         <div ref={bottomRef} />
