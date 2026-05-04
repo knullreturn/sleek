@@ -40,16 +40,16 @@ fun ChatScreen(
     onBack:    () -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
 ) {
-    val state  by viewModel.state.collectAsStateWithLifecycle()
-    val myId   by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
-
-    // init synchronously during composition — cache hit sets state before first frame
+    // ── MUST be first: updates StateFlow with cache before first collection ──
     remember(chatId) { viewModel.init(chatId) }
 
-    // Mark seen on last peer message when screen opens / messages update
-    LaunchedEffect(state.messages) {
-        val lastPeer = state.messages.lastOrNull { it.senderId != myId }
-        lastPeer?.let { viewModel.markSeen(it.id) }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val myId  by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
+
+    // Mark seen only when the last peer message ID changes — not on every recompose
+    val lastPeerMsgId = state.messages.lastOrNull { it.senderId != myId }?.id
+    LaunchedEffect(lastPeerMsgId) {
+        lastPeerMsgId?.let { viewModel.markSeen(it) }
     }
 
     val listState    = rememberLazyListState()

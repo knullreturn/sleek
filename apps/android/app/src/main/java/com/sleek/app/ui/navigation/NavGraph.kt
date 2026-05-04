@@ -15,8 +15,8 @@ import com.sleek.app.ui.chat.ChatScreen
 import com.sleek.app.ui.chatlist.ChatListScreen
 import com.sleek.app.ui.profile.ProfileScreen
 
-private val slideSpec = tween<IntOffset>(320, easing = FastOutSlowInEasing)
-private val fadeSpec  = tween<Float>(220, easing = FastOutSlowInEasing)
+private val slideSpec = tween<IntOffset>(220, easing = FastOutSlowInEasing)
+private val fadeSpec  = tween<Float>(180, easing = FastOutSlowInEasing)
 
 @Composable
 fun NavGraph(
