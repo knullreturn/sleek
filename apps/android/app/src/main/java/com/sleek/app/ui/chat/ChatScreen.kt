@@ -206,35 +206,71 @@ fun ChatScreen(
         bottomBar = {
             Column {
                 // Reply bar
-                AnimatedVisibility(visible = replyingTo != null) {
+                AnimatedVisibility(
+                    visible = replyingTo != null,
+                    enter   = slideInVertically(tween(200)) { it } + fadeIn(tween(200)),
+                    exit    = slideOutVertically(tween(160)) { it } + fadeOut(tween(160)),
+                ) {
                     replyingTo?.let { msg ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Surface)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                                .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(3.dp)
-                                    .height(36.dp)
-                                    .background(Accent)
+                            // Reply icon
+                            Icon(
+                                imageVector        = androidx.compose.material.icons.Icons.Default.Reply,
+                                contentDescription = null,
+                                tint               = Accent,
+                                modifier           = Modifier.size(20.dp),
                             )
-                            Spacer(Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text  = "Replying to ${msg.sender.username}",
-                                    style = MaterialTheme.typography.labelMedium,
+
+                            // Accent left border + content
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                    .background(AccentDim),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                // Accent left border
+                                Box(
+                                    modifier = Modifier
+                                        .width(3.dp)
+                                        .height(44.dp)
+                                        .background(Accent)
                                 )
-                                Text(
-                                    text  = msg.content,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                )
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text  = msg.sender.username ?: "Unknown",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            color      = Accent,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        ),
+                                    )
+                                    Spacer(Modifier.height(1.dp))
+                                    Text(
+                                        text     = msg.content,
+                                        style    = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
+
+                            // Close button
                             IconButton(onClick = { replyingTo = null }) {
-                                Icon(Icons.Default.Close, contentDescription = "Cancel reply", tint = TextSecondary)
+                                Icon(
+                                    imageVector        = Icons.Default.Close,
+                                    contentDescription = "Cancel reply",
+                                    tint               = TextSecondary,
+                                    modifier           = Modifier.size(20.dp),
+                                )
                             }
                         }
                     }

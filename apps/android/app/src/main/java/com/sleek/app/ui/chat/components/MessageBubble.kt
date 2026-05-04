@@ -52,7 +52,7 @@ fun MessageBubble(
             .padding(
                 start  = if (isOwn) 64.dp else 8.dp,
                 end    = if (isOwn) 8.dp  else 64.dp,
-                top    = if (showAvatar) 8.dp else 2.dp,   // gap between sender groups
+                top    = if (showAvatar) 8.dp else 2.dp,
                 bottom = 1.dp,
             ),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
@@ -61,122 +61,114 @@ fun MessageBubble(
         Column(
             horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
         ) {
-            // Reply chip
-            if (message.replyTo != null) {
-                ReplyChip(
-                    replyTo   = message.replyTo,
-                    isOwn     = isOwn,
-                    onTap     = { onReplyTap(message.replyTo.id) },
-                    modifier  = Modifier.padding(bottom = 2.dp),
-                )
-            }
-
             // ── Bubble ────────────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .clip(if (isOwn) BubbleShapeOwn else BubbleShapeOther)
                     .background(if (isOwn) BubbleOwn else BubbleOther)
                     .pointerInput(message.id) {
-                        detectTapGestures(
-                            onLongPress = { onLongPress(message) },
-                            onPress     = {
-                                if (canPeek) {
-                                    tryAwaitRelease()
-                                    // handled via pointerInput — peek via long press state
-                                }
-                            }
-                        )
-                    }
-                    .padding(
-                        horizontal = 12.dp,
-                        vertical   = if (isDeleted) 10.dp else 8.dp,
-                    ),
+                        detectTapGestures(onLongPress = { onLongPress(message) })
+                    },
             ) {
-                // Pin badge
-                if (message.pinned) {
-                    Icon(
-                        imageVector       = Icons.Default.PushPin,
-                        contentDescription = "Pinned",
-                        tint              = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
-                        modifier          = Modifier
-                            .size(11.dp)
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-2).dp, y = 2.dp),
-                    )
-                }
-
-                if (isDeleted) {
-                    // Tombstone
-                    Text(
-                        text  = "🗑  This message was deleted",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color      = if (isOwn) TextPrimary.copy(alpha = 0.5f) else TextSecondary,
-                            fontStyle  = FontStyle.Italic,
-                            fontSize   = 13.sp,
-                        ),
-                    )
-                } else {
-                    // ── WhatsApp-style inline timestamp ─────────────────────
-                    // The timestamp lives at BottomEnd of a Box;
-                    // the text has an invisible trailing spacer that reserves
-                    // exactly enough room so the time sits on the last line.
-                    val timeStr   = formatBubbleTime(message.createdAt)
-                    val timeColor by animateColorAsState(
-                        targetValue   = if (isSeen) SeenGreen
-                                        else if (isOwn) TextPrimary.copy(alpha = 0.45f)
-                                        else TextMuted,
-                        animationSpec = tween(500),
-                        label         = "seen_color",
-                    )
-                    // Trailing spacer text = timestamp width (+ "edited " if applicable)
-                    val trailingSpacer = if (canPeek) "  edited  $timeStr" else "  $timeStr"
-
-                    Box {
-                        // Message text with invisible trailing spacer
-                        Text(
-                            text  = buildAnnotatedString {
-                                append(displayText)
-                                withStyle(SpanStyle(color = Color.Transparent)) {
-                                    append(trailingSpacer)
-                                }
-                            },
-                            style    = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(bottom = 4.dp),  // push timestamp slightly below last line
+                Column {
+                    // ── Reply preview (inside bubble, WhatsApp-style) ─────────
+                    if (message.replyTo != null) {
+                        ReplyChip(
+                            replyTo  = message.replyTo,
+                            isOwn    = isOwn,
+                            onTap    = { onReplyTap(message.replyTo.id) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp, start = 6.dp, end = 6.dp, bottom = 0.dp),
                         )
+                        Spacer(Modifier.height(4.dp))
+                    }
 
-                        // Timestamp overlaid at bottom-right
-                        Row(
-                            modifier              = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(start = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                        ) {
-                            // Edited tag — hold to peek original
-                            if (canPeek) {
-                                Text(
-                                    text  = if (peekOriginal) "original" else "edited",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color          = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
-                                        fontStyle      = FontStyle.Italic,
-                                        textDecoration = TextDecoration.Underline,
-                                    ),
-                                    modifier = Modifier.pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onPress = {
-                                                peekOriginal = true
-                                                tryAwaitRelease()
-                                                peekOriginal = false
-                                            }
-                                        )
-                                    },
-                                )
-                            }
-
-                            Text(
-                                text  = timeStr,
-                                style = MaterialTheme.typography.labelSmall.copy(color = timeColor),
+                    // ── Message content ───────────────────────────────────────
+                    Box(
+                        modifier = Modifier.padding(
+                            start    = 12.dp,
+                            end      = 12.dp,
+                            top      = if (message.replyTo != null) 2.dp else if (isDeleted) 10.dp else 8.dp,
+                            bottom   = if (isDeleted) 10.dp else 8.dp,
+                        ),
+                    ) {
+                        // Pin badge
+                        if (message.pinned) {
+                            Icon(
+                                imageVector        = Icons.Default.PushPin,
+                                contentDescription = "Pinned",
+                                tint               = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                                modifier           = Modifier
+                                    .size(11.dp)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-2).dp, y = 2.dp),
                             )
+                        }
+
+                        if (isDeleted) {
+                            Text(
+                                text  = "🗑  This message was deleted",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color     = if (isOwn) TextPrimary.copy(alpha = 0.5f) else TextSecondary,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    fontSize  = 13.sp,
+                                ),
+                            )
+                        } else {
+                            val timeStr   = formatBubbleTime(message.createdAt)
+                            val timeColor by animateColorAsState(
+                                targetValue   = if (isSeen) SeenGreen
+                                                else if (isOwn) TextPrimary.copy(alpha = 0.45f)
+                                                else TextMuted,
+                                animationSpec = tween(500),
+                                label         = "seen_color",
+                            )
+                            val trailingSpacer = if (canPeek) "  edited  $timeStr" else "  $timeStr"
+
+                            Box {
+                                Text(
+                                    text  = buildAnnotatedString {
+                                        append(displayText)
+                                        withStyle(SpanStyle(color = Color.Transparent)) {
+                                            append(trailingSpacer)
+                                        }
+                                    },
+                                    style    = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(bottom = 4.dp),
+                                )
+                                Row(
+                                    modifier              = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(start = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment     = Alignment.CenterVertically,
+                                ) {
+                                    if (canPeek) {
+                                        Text(
+                                            text  = if (peekOriginal) "original" else "edited",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color          = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                                                fontStyle      = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                textDecoration = TextDecoration.Underline,
+                                            ),
+                                            modifier = Modifier.pointerInput(Unit) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        peekOriginal = true
+                                                        tryAwaitRelease()
+                                                        peekOriginal = false
+                                                    }
+                                                )
+                                            },
+                                        )
+                                    }
+                                    Text(
+                                        text  = timeStr,
+                                        style = MaterialTheme.typography.labelSmall.copy(color = timeColor),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
