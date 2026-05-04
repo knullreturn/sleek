@@ -52,7 +52,7 @@ fun MessageBubble(
             .padding(
                 start  = if (isOwn) 64.dp else 8.dp,
                 end    = if (isOwn) 8.dp  else 64.dp,
-                top    = 1.dp,
+                top    = if (showAvatar) 8.dp else 2.dp,   // gap between sender groups
                 bottom = 1.dp,
             ),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
@@ -140,7 +140,8 @@ fun MessageBubble(
                                     append(trailingSpacer)
                                 }
                             },
-                            style = MaterialTheme.typography.bodyLarge,
+                            style    = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 4.dp),  // push timestamp slightly below last line
                         )
 
                         // Timestamp overlaid at bottom-right
