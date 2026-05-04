@@ -28,11 +28,10 @@ android {
 
     signingConfigs {
         create("release") {
-            // Using debug keystore for v1.0.0 — replace with a production keystore before publishing to Play Store
-            storeFile     = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias      = "androiddebugkey"
-            keyPassword   = "android"
+            storeFile     = file("${rootProject.projectDir}/sleek-release.keystore")
+            storePassword = "sleek2024secure"
+            keyAlias      = "sleek"
+            keyPassword   = "sleek2024secure"
         }
     }
 

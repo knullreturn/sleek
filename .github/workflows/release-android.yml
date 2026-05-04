@@ -41,6 +41,9 @@ jobs:
       - name: Inject google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > apps/android/app/google-services.json
 
+      - name: Inject release keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > apps/android/sleek-release.keystore
+
       - name: Build release APK
         working-directory: apps/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace

@@ -11,3 +11,5 @@ Thumbs.db
 apps/server/prisma/migrations/
 # Firebase — injected from GitHub Secret during CI/CD, never commit
 apps/android/app/google-services.json
+# Release keystore — injected from GitHub Secret during CI/CD, never commit
+sleek-release.keystore
