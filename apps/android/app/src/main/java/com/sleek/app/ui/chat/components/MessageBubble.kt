@@ -1,0 +1,225 @@
+package com.sleek.app.ui.chat.components
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.sleek.app.data.model.Message
+import com.sleek.app.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun MessageBubble(
+    message:       Message,
+    isOwn:         Boolean,
+    showAvatar:    Boolean,   // first in group — show avatar
+    isSeen:        Boolean,
+    onLongPress:   (Message) -> Unit,
+    onReplyTap:    (String) -> Unit,   // scroll to reply origin
+    modifier:      Modifier = Modifier,
+) {
+    val isDeleted = message.deletedAt != null
+
+    // Press-and-hold to peek original on edited messages
+    var peekOriginal by remember { mutableStateOf(false) }
+    val canPeek      = message.edited && message.originalContent != null
+    val displayText  = if (peekOriginal && canPeek) message.originalContent!! else message.content
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                start  = if (isOwn) 64.dp else 8.dp,
+                end    = if (isOwn) 8.dp  else 64.dp,
+                top    = 1.dp,
+                bottom = 1.dp,
+            ),
+        horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        // Avatar (other messages only)
+        if (!isOwn) {
+            Box(modifier = Modifier.size(32.dp)) {
+                if (showAvatar) {
+                    if (message.sender.avatarUrl != null) {
+                        AsyncImage(
+                            model             = message.sender.avatarUrl,
+                            contentDescription = message.sender.username,
+                            contentScale      = ContentScale.Crop,
+                            modifier          = Modifier.fillMaxSize().clip(CircleShape),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(AccentDim),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text  = (message.sender.username ?: "?").take(1).uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(color = Accent),
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+        }
+
+        Column(
+            horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
+        ) {
+            // Sender name (first in group, other messages)
+            if (showAvatar && !isOwn) {
+                Text(
+                    text     = message.sender.username ?: "Unknown",
+                    style    = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+                )
+            }
+
+            // Reply chip
+            if (message.replyTo != null) {
+                ReplyChip(
+                    replyTo   = message.replyTo,
+                    isOwn     = isOwn,
+                    onTap     = { onReplyTap(message.replyTo.id) },
+                    modifier  = Modifier.padding(bottom = 2.dp),
+                )
+            }
+
+            // ── Bubble ────────────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .clip(if (isOwn) BubbleShapeOwn else BubbleShapeOther)
+                    .background(if (isOwn) BubbleOwn else BubbleOther)
+                    .pointerInput(message.id) {
+                        detectTapGestures(
+                            onLongPress = { onLongPress(message) },
+                            onPress     = {
+                                if (canPeek) {
+                                    tryAwaitRelease()
+                                    // handled via pointerInput — peek via long press state
+                                }
+                            }
+                        )
+                    }
+                    .padding(
+                        horizontal = 12.dp,
+                        vertical   = if (isDeleted) 10.dp else 8.dp,
+                    ),
+            ) {
+                // Pin badge
+                if (message.pinned) {
+                    Icon(
+                        imageVector       = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint              = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                        modifier          = Modifier
+                            .size(11.dp)
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-2).dp, y = 2.dp),
+                    )
+                }
+
+                if (isDeleted) {
+                    // Tombstone
+                    Text(
+                        text  = "🗑  This message was deleted",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color      = if (isOwn) TextPrimary.copy(alpha = 0.5f) else TextSecondary,
+                            fontStyle  = FontStyle.Italic,
+                            fontSize   = 13.sp,
+                        ),
+                    )
+                } else {
+                    Column {
+                        // Message text — key triggers recompose for peek animation
+                        key(peekOriginal) {
+                            AnimatedContent(
+                                targetState   = displayText,
+                                transitionSpec = {
+                                    fadeIn(tween(180)) togetherWith fadeOut(tween(120))
+                                },
+                                label = "message_text",
+                            ) { text ->
+                                Text(
+                                    text  = text,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+
+                        // Meta row: edited tag + timestamp
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .padding(top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
+                        ) {
+                            // Edited tag — hold to peek
+                            if (canPeek) {
+                                Text(
+                                    text  = if (peekOriginal) "original" else "edited",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (isOwn) TextPrimary.copy(alpha = 0.65f) else TextSecondary,
+                                        fontStyle = FontStyle.Italic,
+                                        textDecoration = TextDecoration.Underline,
+                                    ),
+                                    modifier = Modifier.pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                peekOriginal = true
+                                                tryAwaitRelease()
+                                                peekOriginal = false
+                                            }
+                                        )
+                                    },
+                                )
+                            }
+
+                            // Timestamp
+                            val timeColor by animateColorAsState(
+                                targetValue = if (isSeen) SeenGreen else
+                                    if (isOwn) TextPrimary.copy(alpha = 0.45f) else TextMuted,
+                                animationSpec = tween(500),
+                                label = "seen_color",
+                            )
+                            Text(
+                                text  = formatBubbleTime(message.createdAt),
+                                style = MaterialTheme.typography.labelSmall.copy(color = timeColor),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun formatBubbleTime(isoString: String): String = try {
+    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    sdf.timeZone = TimeZone.getTimeZone("UTC")
+    val date = sdf.parse(isoString) ?: return ""
+    SimpleDateFormat("h:mm a", Locale.getDefault()).format(date)
+} catch (_: Exception) { "" }
