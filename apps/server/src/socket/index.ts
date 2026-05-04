@@ -1,49 +1,14 @@
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 import { verifyJwt } from '../lib/jwt';
+import { AuthSocket } from './socketTypes';
+import { registerMessageHandlers } from './handlers/messageHandlers';
+import { registerPresenceHandlers, broadcastPresence } from './handlers/presenceHandlers';
 
-interface AuthSocket extends Socket {
-  userId:   string;
-  username: string | null;
-  tag:      string;
-}
-
-const memberSelect = { id: true, username: true, tag: true, avatarUrl: true };
-const onlineUsers  = new Map<string, Set<string>>();
-
-// Shared include shape used across all message queries
-const messageInclude = {
-  sender:   { select: memberSelect },
-  replyTo:  { include: { sender: { select: memberSelect } } },
-  pinnedBy: { select: memberSelect },
-};
-
-function serializeMessage(msg: any) {
-  return {
-    id:              msg.id,
-    chatId:          msg.chatId,
-    senderId:        msg.senderId,
-    sender:          { ...msg.sender, handle: msg.sender.tag },
-    content:         msg.content,
-    edited:          msg.edited,
-    originalContent: msg.originalContent  ?? null,
-    deletedAt:       msg.deletedAt        ? msg.deletedAt.toISOString()  : null,
-    pinned:          msg.pinned,
-    pinnedAt:        msg.pinnedAt         ? msg.pinnedAt.toISOString()   : null,
-    pinnedById:      msg.pinnedById       ?? null,
-    pinnedBy:        msg.pinnedBy ? { ...msg.pinnedBy, handle: msg.pinnedBy.tag } : null,
-    replyTo: msg.replyTo ? {
-      id:        msg.replyTo.id,
-      content:   msg.replyTo.content,
-      deletedAt: msg.replyTo.deletedAt ? msg.replyTo.deletedAt.toISOString() : null,
-      sender:    { ...msg.replyTo.sender, handle: msg.replyTo.sender.tag },
-    } : null,
-    createdAt: msg.createdAt.toISOString(),
-    updatedAt: msg.updatedAt.toISOString(),
-  };
-}
+const onlineUsers = new Map<string, Set<string>>();
 
 export function registerSocketServer(io: Server, prisma: PrismaClient) {
+
   // ── Auth middleware ──────────────────────────────────────────────────────────
   io.use(async (socket, next) => {
     try {
@@ -68,6 +33,7 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
     }
   });
 
+  // ── Connection ───────────────────────────────────────────────────────────────
   io.on('connection', (socket: Socket) => {
     const s = socket as AuthSocket;
 
@@ -76,21 +42,17 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
     onlineUsers.get(s.userId)!.add(s.id);
     broadcastPresence(io, prisma, s.userId, 'online');
 
-    // Personal room — used by send_message to find and join this socket into new chat rooms
+    // Personal room — lets send_message find and join this socket into new chat rooms
     socket.join(`user:${s.userId}`);
 
-    // ── Auto-join ALL user's chat rooms on connect ──────────────────────────────
-    // This ensures receive_message is delivered even when the chat isn't open.
-    // join_chat / leave_chat remain for fine-grained control (typing, etc.)
-    prisma.chatMember.findMany({ where: { userId: s.userId }, select: { chatId: true } })
-      .then((memberships) => {
-        for (const { chatId } of memberships) {
-          socket.join(`chat:${chatId}`);
-        }
-      })
+    // Auto-join ALL existing chat rooms so messages arrive regardless of which
+    // screen is open (no need to emit join_chat for message delivery)
+    prisma.chatMember
+      .findMany({ where: { userId: s.userId }, select: { chatId: true } })
+      .then((memberships) => { for (const { chatId } of memberships) socket.join(`chat:${chatId}`); })
       .catch((err) => console.error('auto-join error:', err));
 
-    // ── Room management (for typing / read receipts per-chat granularity) ───────
+    // ── Room management (fine-grained, e.g. new chat created while online) ────
     socket.on('join_chat', async (chatId: string) => {
       const member = await prisma.chatMember.findUnique({
         where: { chatId_userId: { chatId, userId: s.userId } },
@@ -100,192 +62,9 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
 
     socket.on('leave_chat', (chatId: string) => socket.leave(`chat:${chatId}`));
 
-    // ── send_message ──────────────────────────────────────────────────────────
-    socket.on('send_message', async (payload: { chatId: string; content: string; replyToId?: string }) => {
-      try {
-        const { chatId, content, replyToId } = payload;
-        const trimmed = content?.trim();
-        if (!trimmed)            return;
-        if (trimmed.length > 4000) return socket.emit('error', { message: 'Message too long (max 4000 characters)' });
-
-        const member = await prisma.chatMember.findUnique({
-          where: { chatId_userId: { chatId, userId: s.userId } },
-        });
-        if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
-
-        // Validate reply target belongs to the same chat
-        if (replyToId) {
-          const replyMsg = await prisma.message.findUnique({ where: { id: replyToId }, select: { chatId: true } });
-          if (!replyMsg || replyMsg.chatId !== chatId) return socket.emit('error', { message: 'Invalid reply target' });
-        }
-
-        const message = await prisma.message.create({
-          data:    { chatId, senderId: s.userId, content: trimmed, ...(replyToId ? { replyToId } : {}) },
-          include: messageInclude,
-        });
-
-        await prisma.chat.update({ where: { id: chatId }, data: { updatedAt: new Date() } });
-
-        // ── Ensure ALL members' sockets are in the room ────────────────────────
-        // This handles new chats created after a socket connected.
-        // If a member's socket isn't in the room, join them and emit new_chat
-        // so their UI adds the chat to the list instantly (no API re-fetch needed).
-        const allMembers = await prisma.chatMember.findMany({
-          where: { chatId },
-          select: { userId: true },
-        });
-        let chatForNewMembers: any = null; // lazy-loaded
-        for (const { userId } of allMembers) {
-          const userSockets = await io.in(`user:${userId}`).fetchSockets();
-          for (const sock of userSockets) {
-            if (!sock.rooms.has(`chat:${chatId}`)) {
-              sock.join(`chat:${chatId}`);
-              // Load full chat once and reuse for all new sockets
-              if (!chatForNewMembers) {
-                chatForNewMembers = await prisma.chat.findUnique({
-                  where: { id: chatId },
-                  include: { members: { include: { user: { select: memberSelect } } } },
-                });
-              }
-              if (chatForNewMembers) {
-                sock.emit('new_chat', {
-                  chat: {
-                    id:          chatForNewMembers.id,
-                    type:        chatForNewMembers.type,
-                    createdAt:   chatForNewMembers.createdAt.toISOString(),
-                    members:     chatForNewMembers.members.map((m: any) => ({ ...m.user, handle: m.user.tag })),
-                    lastMessage: serializeMessage(message),
-                  },
-                });
-              }
-            }
-          }
-        }
-
-        io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
-      } catch (err) {
-        console.error('send_message error:', err);
-        socket.emit('error', { message: 'Failed to send message' });
-      }
-    });
-
-    // ── edit_message ──────────────────────────────────────────────────────────
-    socket.on('edit_message', async (payload: { messageId: string; chatId: string; newContent: string }) => {
-      try {
-        const { messageId, chatId, newContent } = payload;
-        const trimmed = newContent?.trim();
-        if (!trimmed)              return;
-        if (trimmed.length > 4000) return socket.emit('error', { message: 'Message too long (max 4000 characters)' });
-
-        const existing = await prisma.message.findUnique({ where: { id: messageId } });
-        if (!existing)                      return socket.emit('error', { message: 'Message not found' });
-        if (existing.senderId !== s.userId) return socket.emit('error', { message: 'Not your message' });
-        if (existing.deletedAt)             return socket.emit('error', { message: 'Cannot edit a deleted message' });
-
-        const updated = await prisma.message.update({
-          where:   { id: messageId },
-          data:    {
-            content:         trimmed,
-            edited:          true,
-            // Preserve the very first version of the content; never overwrite
-            originalContent: existing.originalContent ?? existing.content,
-          },
-          include: messageInclude,
-        });
-        io.to(`chat:${chatId}`).emit('message_edited', { message: serializeMessage(updated) });
-      } catch (err) {
-        console.error('edit_message error:', err);
-        socket.emit('error', { message: 'Failed to edit message' });
-      }
-    });
-
-    // ── delete_message (soft) ─────────────────────────────────────────────────
-    socket.on('delete_message', async (payload: { messageId: string; chatId: string }) => {
-      try {
-        const { messageId, chatId } = payload;
-        const existing = await prisma.message.findUnique({ where: { id: messageId } });
-        if (!existing)                      return socket.emit('error', { message: 'Message not found' });
-        if (existing.senderId !== s.userId) return socket.emit('error', { message: 'Not your message' });
-        if (existing.deletedAt)             return; // already deleted — idempotent
-
-        const updated = await prisma.message.update({
-          where:   { id: messageId },
-          data:    {
-            deletedAt:  new Date(),
-            // Auto-unpin: a deleted message should not remain pinned
-            pinned:     false,
-            pinnedAt:   null,
-            pinnedById: null,
-          },
-          include: messageInclude,
-        });
-        io.to(`chat:${chatId}`).emit('message_deleted', { message: serializeMessage(updated) });
-      } catch (err) {
-        console.error('delete_message error:', err);
-        socket.emit('error', { message: 'Failed to delete message' });
-      }
-    });
-
-    // ── pin_message ───────────────────────────────────────────────────────────
-    socket.on('pin_message', async (payload: { messageId: string; chatId: string }) => {
-      try {
-        const { messageId, chatId } = payload;
-        const member = await prisma.chatMember.findUnique({
-          where: { chatId_userId: { chatId, userId: s.userId } },
-        });
-        if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
-
-        const updated = await prisma.message.update({
-          where:   { id: messageId },
-          data:    { pinned: true, pinnedAt: new Date(), pinnedById: s.userId },
-          include: messageInclude,
-        });
-        io.to(`chat:${chatId}`).emit('message_pinned', { message: serializeMessage(updated) });
-      } catch (err) {
-        console.error('pin_message error:', err);
-        socket.emit('error', { message: 'Failed to pin message' });
-      }
-    });
-
-    // ── unpin_message ─────────────────────────────────────────────────────────
-    socket.on('unpin_message', async (payload: { messageId: string; chatId: string }) => {
-      try {
-        const { messageId, chatId } = payload;
-        const member = await prisma.chatMember.findUnique({
-          where: { chatId_userId: { chatId, userId: s.userId } },
-        });
-        if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
-
-        const updated = await prisma.message.update({
-          where:   { id: messageId },
-          data:    { pinned: false, pinnedAt: null, pinnedById: null },
-          include: messageInclude,
-        });
-        io.to(`chat:${chatId}`).emit('message_unpinned', { message: serializeMessage(updated) });
-      } catch (err) {
-        console.error('unpin_message error:', err);
-        socket.emit('error', { message: 'Failed to unpin message' });
-      }
-    });
-
-    // ── Typing indicator ──────────────────────────────────────────────────────
-    socket.on('typing', (payload: { chatId: string; isTyping: boolean }) => {
-      socket.to(`chat:${payload.chatId}`).emit('typing', {
-        chatId:   payload.chatId,
-        userId:   s.userId,
-        username: s.username,
-        isTyping: payload.isTyping,
-      });
-    });
-
-    // ── Read receipts ─────────────────────────────────────────────────────────
-    socket.on('mark_seen', (payload: { chatId: string; messageId: string }) => {
-      socket.to(`chat:${payload.chatId}`).emit('message_seen', {
-        messageId: payload.messageId,
-        chatId:    payload.chatId,
-        userId:    s.userId,
-      });
-    });
+    // ── Feature handlers ──────────────────────────────────────────────────────
+    registerMessageHandlers(io, s, prisma);
+    registerPresenceHandlers(io, s, prisma);
 
     // ── Disconnect ────────────────────────────────────────────────────────────
     socket.on('disconnect', async () => {
@@ -299,13 +78,4 @@ export function registerSocketServer(io: Server, prisma: PrismaClient) {
       }
     });
   });
-}
-
-async function broadcastPresence(
-  io: Server, prisma: PrismaClient, userId: string, status: 'online' | 'offline',
-) {
-  const memberships = await prisma.chatMember.findMany({ where: { userId }, select: { chatId: true } });
-  for (const { chatId } of memberships) {
-    io.to(`chat:${chatId}`).emit('presence', { userId, status });
-  }
 }
