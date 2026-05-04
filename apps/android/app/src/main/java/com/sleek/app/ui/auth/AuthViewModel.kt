@@ -70,6 +70,8 @@ class AuthViewModel @Inject constructor(
                     _state.value = if (body.user.needsOnboarding) AuthUiState.NeedsOnboard
                                    else AuthUiState.Success
                 } else {
+                    val errBody = res.errorBody()?.string() ?: "no body"
+                    android.util.Log.e("AUTH", "Sign-in failed ${res.code()}: $errBody")
                     _state.value = AuthUiState.Error("Sign-in failed. Try again.")
                 }
             } catch (e: GetCredentialException) {
