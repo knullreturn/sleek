@@ -21,7 +21,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -57,6 +59,8 @@ fun ChatScreen(
     var replyingTo   by remember { mutableStateOf<Message?>(null) }
     var inputValue   by remember { mutableStateOf(TextFieldValue()) }
     val focusReq     = remember { FocusRequester() }
+    var contextMsg   by remember { mutableStateOf<Message?>(null) }  // long-press target
+    val clipboard    = LocalClipboardManager.current
 
     // Derived: if last message is from peer, green timestamps reset
     val peerHasReplied = remember(state.messages) {
@@ -103,6 +107,22 @@ fun ChatScreen(
         if (state.typingUsers.isNotEmpty()) {
             listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
         }
+    }
+
+    // ── Message context menu (long-press) ─────────────────────────────────────
+    contextMsg?.let { msg ->
+        val isOwnMsg = msg.senderId == myId
+        MessageContextMenu(
+            message   = msg,
+            isOwn     = isOwnMsg,
+            onDismiss = { contextMsg = null },
+            onCopy    = { clipboard.setText(AnnotatedString(msg.content)) },
+            onReply   = { replyingTo = msg },
+            onEdit    = { newContent -> viewModel.editMessage(msg.id, newContent) },
+            onPin     = { viewModel.pinMessage(msg.id, pin = true) },
+            onUnpin   = { viewModel.pinMessage(msg.id, pin = false) },
+            onDelete  = { viewModel.deleteMessage(msg.id) },
+        )
     }
 
     Scaffold(
@@ -157,6 +177,22 @@ fun ChatScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextSecondary)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: in-chat search */ }) {
+                        Icon(
+                            imageVector        = Icons.Default.Search,
+                            contentDescription = "Search messages",
+                            tint               = TextSecondary,
+                        )
+                    }
+                    IconButton(onClick = { /* TODO: pinned messages */ }) {
+                        Icon(
+                            imageVector        = Icons.Default.PushPin,
+                            contentDescription = "Pinned messages",
+                            tint               = TextSecondary,
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface),
@@ -336,8 +372,8 @@ fun ChatScreen(
                                     isOwn       = isOwn,
                                     showAvatar  = showAvatar,
                                     isSeen      = isSeen,
-                                    onLongPress = { /* TODO: context menu */ },
-                                    onReplyTap  = { /* TODO: scroll to */ },
+                                    onLongPress = { contextMsg = msg },
+                                    onReplyTap  = { /* TODO: scroll to replied msg */ },
                                 )
                             }
                         }
