@@ -34,6 +34,8 @@ import com.sleek.app.ui.chat.components.*
 import com.sleek.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +92,7 @@ fun ChatScreen(
     // LazyColumn renders ONCE with all messages already ready. Zero jank.
     var contentVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(300)
+        delay(300)
         contentVisible = true
     }
 
@@ -107,7 +109,7 @@ fun ChatScreen(
     val imeBottom = WindowInsets.ime.getBottom(density)
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
-            kotlinx.coroutines.delay(50)   // let layout shift settle first
+            delay(50)   // let layout shift settle first
             listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
         }
     }
