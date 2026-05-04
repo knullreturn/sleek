@@ -14,6 +14,10 @@ interface MessageDao {
     @Query("SELECT COUNT(*) FROM messages WHERE chatId = :chatId")
     suspend fun countMessages(chatId: String): Int
 
+    /** All chat IDs that have at least one message — used to pre-populate knownChatIds on startup */
+    @Query("SELECT DISTINCT chatId FROM messages")
+    suspend fun getDistinctChatIds(): List<String>
+
     /** Replace all messages for a chat (after full network fetch) */
     @Transaction
     suspend fun replaceAll(chatId: String, messages: List<MessageEntity>) {

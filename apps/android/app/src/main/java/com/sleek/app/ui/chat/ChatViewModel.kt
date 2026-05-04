@@ -41,13 +41,18 @@ class ChatViewModel @Inject constructor(
     fun mightHaveData(chatId: String) = messageRepository.mightHaveData(chatId)
 
     fun init(chatId: String) {
-        if (currentChatId == chatId) return   // already initialised for this chat
+        if (currentChatId == chatId) return
         currentChatId = chatId
         socketManager.joinChat(chatId)
         observeSocket()
 
+        // ── If Room likely has data, skip skeleton immediately ────────────────
+        val likelyHasData = messageRepository.mightHaveData(chatId)
+        if (likelyHasData) {
+            _state.update { it.copy(isLoading = false) }
+        }
+
         // ── 1. Subscribe to Room Flow — UI updates automatically ──────────────
-        // Room emits the first value from disk in < 5ms — no skeleton on re-opens
         messageRepository.observeMessages(chatId)
             .onEach { messages ->
                 val myId = tokenDataStore.userId.first()
@@ -55,21 +60,23 @@ class ChatViewModel @Inject constructor(
                 _state.update { s ->
                     s.copy(
                         messages  = messages,
-                        isLoading = messages.isEmpty() && s.isLoading,
+                        // Turn off loading as soon as we get any data from Room
+                        isLoading = if (messages.isNotEmpty()) false else s.isLoading,
                         peer      = peer ?: s.peer,
                     )
                 }
             }
             .launchIn(viewModelScope)
 
-        // ── 2. Background: fetch from network if no local data ────────────────
+        // ── 2. Network sync ───────────────────────────────────────────────────
         viewModelScope.launch {
             val myId = tokenDataStore.userId.first()
             if (!messageRepository.hasMessages(chatId)) {
-                // First ever open — show skeleton until fetch completes
-                fetchAndSave(chatId, myId)
+                // Absolute first open — skeleton until fetch completes
+                _state.update { it.copy(isLoading = true) }
+                fetchAndSave(chatId, myId, silent = false)
             } else {
-                // Has local data — fetch silently to sync any new messages
+                // Has local data — sync silently, no UI disruption
                 fetchAndSave(chatId, myId, silent = true)
             }
         }
