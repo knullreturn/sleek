@@ -6,12 +6,12 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    // ── Auth ──────────────────────────────────────────────────────────────────
-    @POST("auth/login")
-    suspend fun login(@Body body: LoginRequest): Response<AuthResponse>
+    // ── Auth (Google OAuth only) ───────────────────────────────────────────────
+    @POST("auth/google")
+    suspend fun googleAuth(@Body body: GoogleAuthRequest): Response<AuthResponse>
 
-    @POST("auth/register")
-    suspend fun register(@Body body: RegisterRequest): Response<AuthResponse>
+    @POST("auth/onboard")
+    suspend fun onboard(@Body body: OnboardRequest): Response<AuthResponse>
 
     // ── User ──────────────────────────────────────────────────────────────────
     @GET("users/me")

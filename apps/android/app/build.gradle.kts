@@ -21,6 +21,8 @@ android {
 
         buildConfigField("String", "API_URL",    "\"https://sleek.up.railway.app/api\"")
         buildConfigField("String", "SOCKET_URL", "\"https://sleek.up.railway.app\"")
+        // Replace with your Web Client ID from Google Cloud Console
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"YOUR_WEB_CLIENT_ID.apps.googleusercontent.com\"")
     }
 
     buildTypes {
@@ -101,4 +103,9 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+
+    // Google Sign-In via Credential Manager
+    implementation(libs.credentials)
+    implementation(libs.credentials.play)
+    implementation(libs.google.id)
 }

@@ -2,236 +2,182 @@ package com.sleek.app.ui.auth
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sleek.app.ui.auth.SleekTextField
 import com.sleek.app.ui.theme.*
 
+// ── Login Screen — Google Sign-In only ───────────────────────────────────────
 @Composable
 fun LoginScreen(
     onLoginSuccess:  () -> Unit,
-    onGoToRegister:  () -> Unit,
+    onNeedsOnboard:  () -> Unit,
     viewModel:       AuthViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val focusManager = LocalFocusManager.current
-
-    var email    by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPass by remember { mutableStateOf(false) }
+    val state   by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(state) {
-        if (state is AuthUiState.Success) onLoginSuccess()
+        when (state) {
+            is AuthUiState.Success      -> onLoginSuccess()
+            is AuthUiState.NeedsOnboard -> onNeedsOnboard()
+            else -> {}
+        }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Black)
-            .padding(horizontal = 28.dp),
+            .background(Black),
         contentAlignment = Alignment.Center,
     ) {
         Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            // Logo / wordmark
-            Text(
-                text  = "SLEEK",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize   = 36.sp,
-                    brush      = Brush.linearGradient(listOf(Accent, AccentLight)),
-                    letterSpacing = 6.sp,
-                ),
-            )
-            Text(
-                text  = "Sign in to continue",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            // Email
-            SleekTextField(
-                value       = email,
-                onValueChange = { email = it },
-                label       = "Email",
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction    = ImeAction.Next,
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
-            )
-
-            // Password
-            SleekTextField(
-                value         = password,
-                onValueChange = { password = it },
-                label         = "Password",
-                visualTransformation = if (showPass) VisualTransformation.None
-                                       else PasswordVisualTransformation(),
-                trailingIcon  = {
-                    IconButton(onClick = { showPass = !showPass }) {
-                        Icon(
-                            imageVector = if (showPass) Icons.Default.VisibilityOff
-                                          else Icons.Default.Visibility,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction    = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        viewModel.login(email, password)
-                    }
-                ),
-            )
-
-            // Error
-            AnimatedVisibility(visible = state is AuthUiState.Error) {
+            // ── Logo ─────────────────────────────────────────────────────────
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 Text(
-                    text  = (state as? AuthUiState.Error)?.message ?: "",
-                    color = ErrorRed,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text  = "SLEEK",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize      = 42.sp,
+                        brush         = Brush.linearGradient(listOf(Accent, AccentLight)),
+                        letterSpacing = 8.sp,
+                    ),
+                )
+                Text(
+                    text      = "Private. Fast. Beautiful.",
+                    style     = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color     = TextSecondary,
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // Sign in button
-            Button(
-                onClick  = { viewModel.login(email, password) },
-                enabled  = email.isNotBlank() && password.isNotBlank() && state !is AuthUiState.Loading,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors   = ButtonDefaults.buttonColors(containerColor = Accent),
-                shape    = MaterialTheme.shapes.medium,
-            ) {
-                if (state is AuthUiState.Loading) {
-                    CircularProgressIndicator(
-                        color = TextPrimary,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
+            // ── Error ────────────────────────────────────────────────────────
+            AnimatedVisibility(visible = state is AuthUiState.Error) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(ErrorRed.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
+                        .border(1.dp, ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                ) {
+                    Text(
+                        text  = (state as? AuthUiState.Error)?.message ?: "",
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodyMedium,
                     )
-                } else {
-                    Text("Sign In", style = MaterialTheme.typography.titleMedium)
                 }
             }
 
-            // Register link
-            TextButton(onClick = onGoToRegister) {
-                Text(
-                    text  = "Don't have an account? Create one",
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+            // ── Continue with Google button ───────────────────────────────────
+            Button(
+                onClick  = { viewModel.signInWithGoogle(context) },
+                enabled  = state !is AuthUiState.Loading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor   = Color(0xFF1F1F1F),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (state is AuthUiState.Loading) {
+                    CircularProgressIndicator(
+                        color       = Color(0xFF1F1F1F),
+                        modifier    = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Row(
+                        verticalAlignment      = Alignment.CenterVertically,
+                        horizontalArrangement  = Arrangement.spacedBy(12.dp),
+                    ) {
+                        // Google "G" logo colours
+                        GoogleLogo()
+                        Text(
+                            text  = "Continue with Google",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color    = Color(0xFF1F1F1F),
+                                fontSize = 15.sp,
+                            ),
+                        )
+                    }
+                }
             }
+
+            Text(
+                text  = "By continuing you agree to our Terms of Service",
+                style = MaterialTheme.typography.labelSmall.copy(color = TextMuted),
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
 
+// ── Onboarding Screen — pick a username ──────────────────────────────────────
 @Composable
-fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
-    onGoToLogin:       () -> Unit,
-    viewModel:         AuthViewModel = hiltViewModel(),
+fun OnboardingScreen(
+    onDone:    () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val focusManager = LocalFocusManager.current
-
-    var email    by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPass by remember { mutableStateOf(false) }
+    val state    by viewModel.state.collectAsStateWithLifecycle()
+    var username by remember { mutableStateOf("") }
 
     LaunchedEffect(state) {
-        if (state is AuthUiState.Success) onRegisterSuccess()
+        if (state is AuthUiState.Success) onDone()
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Black)
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(
-                text  = "SLEEK",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize      = 36.sp,
-                    brush         = Brush.linearGradient(listOf(Accent, AccentLight)),
-                    letterSpacing = 6.sp,
-                ),
+                text  = "Choose a username",
+                style = MaterialTheme.typography.headlineMedium,
             )
-            Text("Create your account", style = MaterialTheme.typography.bodyMedium)
-
-            Spacer(Modifier.height(8.dp))
-
-            SleekTextField(
-                value         = email,
-                onValueChange = { email = it },
-                label         = "Email",
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction    = ImeAction.Next,
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                ),
+            Text(
+                text      = "This is how people find you on SLEEK.\nYou can change it later.",
+                style     = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
             )
 
             SleekTextField(
-                value         = password,
-                onValueChange = { password = it },
-                label         = "Password",
-                visualTransformation = if (showPass) VisualTransformation.None
-                                       else PasswordVisualTransformation(),
-                trailingIcon  = {
-                    IconButton(onClick = { showPass = !showPass }) {
-                        Icon(
-                            imageVector = if (showPass) Icons.Default.VisibilityOff
-                                          else Icons.Default.Visibility,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                        )
-                    }
+                value         = username,
+                onValueChange = {
+                    username = it.lowercase().replace(" ", "_")
+                    viewModel.resetState()
                 },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction    = ImeAction.Done,
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        viewModel.register(email, password)
-                    }
-                ),
+                label = "Username",
             )
 
             AnimatedVisibility(visible = state is AuthUiState.Error) {
@@ -242,40 +188,62 @@ fun RegisterScreen(
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
-
             Button(
-                onClick  = { viewModel.register(email, password) },
-                enabled  = email.isNotBlank() && password.isNotBlank() && state !is AuthUiState.Loading,
+                onClick  = { viewModel.submitUsername(username) },
+                enabled  = username.length >= 2 && state !is AuthUiState.Loading,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Accent),
-                shape    = MaterialTheme.shapes.medium,
+                shape    = RoundedCornerShape(12.dp),
             ) {
                 if (state is AuthUiState.Loading) {
                     CircularProgressIndicator(color = TextPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Create Account", style = MaterialTheme.typography.titleMedium)
+                    Text("Get Started →", style = MaterialTheme.typography.titleMedium)
                 }
-            }
-
-            TextButton(onClick = onGoToLogin) {
-                Text("Already have an account? Sign in", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
 }
 
-// ── Shared text field ─────────────────────────────────────────────────────────
+// ── Google "G" logo ───────────────────────────────────────────────────────────
+@Composable
+private fun GoogleLogo() {
+    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp)) {
+        val w = size.width
+        val h = size.height
+        // Simplified G letter in brand colours
+        drawArc(
+            color      = Color(0xFF4285F4),
+            startAngle = 0f,
+            sweepAngle = -360f,
+            useCenter  = false,
+            style      = androidx.compose.ui.graphics.drawscope.Stroke(width = w * 0.15f),
+        )
+    }
+    // Simple text "G" as fallback — Compose canvas arc above handles the shape
+    Text(
+        text  = "G",
+        style = MaterialTheme.typography.titleMedium.copy(
+            color    = Color(0xFF4285F4),
+            fontSize = 18.sp,
+        ),
+    )
+}
+
+// ── Shared outlined text field ─────────────────────────────────────────────
 @Composable
 fun SleekTextField(
-    value:                String,
-    onValueChange:        (String) -> Unit,
-    label:                String,
-    modifier:             Modifier = Modifier,
-    trailingIcon:         @Composable (() -> Unit)? = null,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    keyboardOptions:      KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions:      KeyboardActions = KeyboardActions.Default,
+    value:         String,
+    onValueChange: (String) -> Unit,
+    label:         String,
+    modifier:      Modifier = Modifier,
+    trailingIcon:  @Composable (() -> Unit)? = null,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation =
+        androidx.compose.ui.text.input.VisualTransformation.None,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions =
+        androidx.compose.foundation.text.KeyboardOptions.Default,
+    keyboardActions: androidx.compose.foundation.text.KeyboardActions =
+        androidx.compose.foundation.text.KeyboardActions.Default,
 ) {
     OutlinedTextField(
         value             = value,

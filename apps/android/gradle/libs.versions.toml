@@ -18,6 +18,8 @@ socketIo                = "2.1.0"
 coroutines              = "1.9.0"
 gson                    = "2.10.1"
 splashscreen            = "1.0.1"
+credentials             = "1.3.0"
+googleId                = "1.1.1"
 
 [libraries]
 # Core
@@ -70,6 +72,11 @@ coil-compose                            = { group = "io.coil-kt",               
 
 # Coroutines
 coroutines-android                      = { group = "org.jetbrains.kotlinx",       name = "kotlinx-coroutines-android",    version.ref = "coroutines" }
+
+# Google Sign-In via Credential Manager
+credentials                             = { group = "androidx.credentials",         name = "credentials",                   version.ref = "credentials" }
+credentials-play                        = { group = "androidx.credentials",         name = "credentials-play-services-auth", version.ref = "credentials" }
+google-id                               = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleId" }
 
 [plugins]
 android-application     = { id = "com.android.application",            version.ref = "agp" }

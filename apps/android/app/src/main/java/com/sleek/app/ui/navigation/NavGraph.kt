@@ -7,21 +7,22 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.sleek.app.ui.auth.LoginScreen
-import com.sleek.app.ui.auth.RegisterScreen
+import com.sleek.app.ui.auth.OnboardingScreen
 import com.sleek.app.ui.chat.ChatScreen
 import com.sleek.app.ui.chatlist.ChatListScreen
 
 @Composable
 fun NavGraph(
-    navController: NavHostController,
+    navController:    NavHostController,
     startDestination: String,
-    modifier: Modifier = Modifier,
+    modifier:         Modifier = Modifier,
 ) {
     NavHost(
         navController    = navController,
         startDestination = startDestination,
         modifier         = modifier,
     ) {
+        // ── Login — Google Sign-In ────────────────────────────────────────────
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
@@ -29,21 +30,26 @@ fun NavGraph(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onGoToRegister = { navController.navigate(Screen.Register.route) },
-            )
-        }
-
-        composable(Screen.Register.route) {
-            RegisterScreen(
-                onRegisterSuccess = {
-                    navController.navigate(Screen.ChatList.route) {
-                        popUpTo(Screen.Register.route) { inclusive = true }
+                onNeedsOnboard = {
+                    navController.navigate(Screen.Onboarding.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                onGoToLogin = { navController.popBackStack() },
             )
         }
 
+        // ── Onboarding — new user picks username ──────────────────────────────
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onDone = {
+                    navController.navigate(Screen.ChatList.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        // ── Chat list ─────────────────────────────────────────────────────────
         composable(Screen.ChatList.route) {
             ChatListScreen(
                 onOpenChat = { chatId, chatName ->
@@ -52,6 +58,7 @@ fun NavGraph(
             )
         }
 
+        // ── Chat ──────────────────────────────────────────────────────────────
         composable(
             route = Screen.Chat.route,
             arguments = listOf(
