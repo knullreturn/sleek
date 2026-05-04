@@ -4,28 +4,30 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.model.Message
+import com.sleek.app.data.model.User
 import com.sleek.app.data.remote.ApiService
 import com.sleek.app.data.remote.SocketEvent
 import com.sleek.app.data.remote.SocketManager
+import com.sleek.app.data.repository.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.sleek.app.data.model.User
 
 data class ChatUiState(
     val messages:    List<Message> = emptyList(),
     val isLoading:   Boolean       = true,
-    val typingUsers: List<String>  = emptyList(),  // usernames typing
-    val seenUpToId:  String?       = null,          // last message seen by peer
-    val peer:        User?         = null,          // derived from messages
+    val typingUsers: List<String>  = emptyList(),
+    val seenUpToId:  String?       = null,
+    val peer:        User?         = null,
 )
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
-    private val apiService:     ApiService,
-    private val socketManager:  SocketManager,
-    private val tokenDataStore: TokenDataStore,
+    private val apiService:        ApiService,
+    private val socketManager:     SocketManager,
+    private val tokenDataStore:    TokenDataStore,
+    private val messageRepository: MessageRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -36,10 +38,11 @@ class ChatViewModel @Inject constructor(
     private var currentChatId: String = ""
 
     fun init(chatId: String) {
+        if (currentChatId == chatId) return   // already initialised — don't reload
         currentChatId = chatId
-        loadMessages(chatId)
-        observeSocket()
         socketManager.joinChat(chatId)
+        observeSocket()
+        loadMessages(chatId)
     }
 
     override fun onCleared() {
@@ -49,19 +52,36 @@ class ChatViewModel @Inject constructor(
 
     private fun loadMessages(chatId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            try {
-                val myId = tokenDataStore.userId.first()
-                val res = apiService.getMessages(chatId)
-                if (res.isSuccessful) {
-                    val msgs = res.body()?.messages ?: emptyList()
-                    // Derive peer — first sender that isn't me
-                    val peer = msgs.firstOrNull { it.senderId != myId }?.sender
-                    _state.update { it.copy(messages = msgs, isLoading = false, peer = peer) }
-                }
-            } catch (_: Exception) {
+            val myId   = tokenDataStore.userId.first()
+            val cached = messageRepository.get(chatId)
+
+            if (cached != null) {
+                // ── Cache hit: show immediately, no skeleton ──────────────────
+                val peer = cached.firstOrNull { it.senderId != myId }?.sender
+                _state.update { it.copy(messages = cached, isLoading = false, peer = peer) }
+                // Silent background refresh — don't touch isLoading
+                fetchAndUpdate(chatId, myId, silent = true)
+            } else {
+                // ── No cache: show skeleton then load ─────────────────────────
+                _state.update { it.copy(isLoading = true) }
+                fetchAndUpdate(chatId, myId, silent = false)
+            }
+        }
+    }
+
+    private suspend fun fetchAndUpdate(chatId: String, myId: String?, silent: Boolean) {
+        try {
+            val res = apiService.getMessages(chatId)
+            if (res.isSuccessful) {
+                val msgs = res.body()?.messages ?: emptyList()
+                val peer = msgs.firstOrNull { it.senderId != myId }?.sender
+                messageRepository.set(chatId, msgs)
+                _state.update { it.copy(messages = msgs, isLoading = false, peer = peer) }
+            } else if (!silent) {
                 _state.update { it.copy(isLoading = false) }
             }
+        } catch (_: Exception) {
+            if (!silent) _state.update { it.copy(isLoading = false) }
         }
     }
 
@@ -73,18 +93,31 @@ class ChatViewModel @Inject constructor(
                     is SocketEvent.MessageReceived -> {
                         if (event.message.chatId == currentChatId) {
                             _state.update { s ->
+                                val msgs = s.messages + event.message
+                                messageRepository.set(currentChatId, msgs)
                                 s.copy(
-                                    messages   = s.messages + event.message,
-                                    // Peer replied → clear seen green
+                                    messages   = msgs,
                                     seenUpToId = if (event.message.senderId != myId) null else s.seenUpToId,
                                 )
                             }
                         }
                     }
-                    is SocketEvent.MessageEdited -> updateMessage(event.message)
-                    is SocketEvent.MessageDeleted -> updateMessage(event.message)
-                    is SocketEvent.MessagePinned -> updateMessage(event.message)
-                    is SocketEvent.MessageUnpinned -> updateMessage(event.message)
+                    is SocketEvent.MessageEdited,
+                    is SocketEvent.MessageDeleted,
+                    is SocketEvent.MessagePinned,
+                    is SocketEvent.MessageUnpinned -> {
+                        val msg = when (event) {
+                            is SocketEvent.MessageEdited   -> event.message
+                            is SocketEvent.MessageDeleted  -> event.message
+                            is SocketEvent.MessagePinned   -> event.message
+                            is SocketEvent.MessageUnpinned -> event.message
+                            else -> return@collect
+                        }
+                        if (msg.chatId == currentChatId) {
+                            messageRepository.upsert(currentChatId, msg)
+                            updateMessage(msg)
+                        }
+                    }
                     is SocketEvent.TypingChanged -> {
                         if (event.chatId == currentChatId && event.userId != myId) {
                             _state.update { s ->
@@ -113,27 +146,21 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun sendMessage(content: String, replyToId: String? = null) {
+    fun sendMessage(content: String, replyToId: String? = null) =
         socketManager.sendMessage(currentChatId, content, replyToId)
-    }
 
-    fun editMessage(messageId: String, newContent: String) {
+    fun editMessage(messageId: String, newContent: String) =
         socketManager.editMessage(messageId, currentChatId, newContent)
-    }
 
-    fun deleteMessage(messageId: String) {
+    fun deleteMessage(messageId: String) =
         socketManager.deleteMessage(messageId, currentChatId)
-    }
 
-    fun pinMessage(messageId: String, pin: Boolean) {
+    fun pinMessage(messageId: String, pin: Boolean) =
         socketManager.pinMessage(messageId, currentChatId, pin)
-    }
 
-    fun sendTyping(isTyping: Boolean) {
+    fun sendTyping(isTyping: Boolean) =
         socketManager.sendTyping(currentChatId, isTyping)
-    }
 
-    fun markSeen(messageId: String) {
+    fun markSeen(messageId: String) =
         socketManager.markSeen(currentChatId, messageId)
-    }
 }

@@ -56,50 +56,11 @@ fun MessageBubble(
                 bottom = 1.dp,
             ),
         horizontalArrangement = if (isOwn) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment     = Alignment.Bottom,
     ) {
-        // Avatar (other messages only)
-        if (!isOwn) {
-            Box(modifier = Modifier.size(32.dp)) {
-                if (showAvatar) {
-                    if (message.sender.avatarUrl != null) {
-                        AsyncImage(
-                            model             = message.sender.avatarUrl,
-                            contentDescription = message.sender.username,
-                            contentScale      = ContentScale.Crop,
-                            modifier          = Modifier.fillMaxSize().clip(CircleShape),
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(AccentDim),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text  = (message.sender.username ?: "?").take(1).uppercase(),
-                                style = MaterialTheme.typography.labelSmall.copy(color = Accent),
-                            )
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.width(8.dp))
-        }
-
         Column(
             horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
         ) {
-            // Sender name (first in group, other messages)
-            if (showAvatar && !isOwn) {
-                Text(
-                    text     = message.sender.username ?: "Unknown",
-                    style    = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
-                )
-            }
-
             // Reply chip
             if (message.replyTo != null) {
                 ReplyChip(
