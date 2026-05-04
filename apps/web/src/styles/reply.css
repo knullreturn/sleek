@@ -1,4 +1,4 @@
-﻿/* -- Inline Edit Input -------------------------------------------------------- */
+/* -- Inline Edit Input -------------------------------------------------------- */
 @keyframes editIn {
   from { opacity: 0; transform: scaleY(0.88) translateY(-4px); }
   to   { opacity: 1; transform: none; }
@@ -230,3 +230,5 @@
   background: transparent !important;
   border: 1px dashed var(--border-subtle) !important;
   box-shadow: none !important;
+}
+

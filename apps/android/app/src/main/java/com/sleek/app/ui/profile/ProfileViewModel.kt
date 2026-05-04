@@ -35,7 +35,7 @@ class ProfileViewModel @Inject constructor(
             val cachedUserId   = tokenDataStore.userId.first()
             if (cachedUsername != null && cachedUserId != null) {
                 _me.value = User(id = cachedUserId, username = cachedUsername,
-                                 email = "", tag = "", avatarUrl = null, needsOnboarding = false)
+                                 tag = "", avatarUrl = null, needsOnboarding = false)
                 _isLoading.value = false   // show cached data instantly
             }
 
