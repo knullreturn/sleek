@@ -126,7 +126,7 @@ fun ChatScreen(
         val isNearBottom = lastVisible >= totalItems - 5
         val isMine       = lastMsg.senderId == myId
         if (isMine || isNearBottom)
-            listState.animateScrollToItem(maxOf(0, totalItems - 1))
+            listState.scrollToChatItem(maxOf(0, totalItems - 1))
     }
 
     // Keyboard opens → scroll to keep input visible
@@ -135,7 +135,7 @@ fun ChatScreen(
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
             delay(50)
-            listState.animateScrollToItem(lastListIndex)
+            listState.scrollToChatItem(lastListIndex)
         }
     }
 
@@ -145,7 +145,7 @@ fun ChatScreen(
             val totalItems   = listState.layoutInfo.totalItemsCount
             val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             val isNearBottom = lastVisible >= totalItems - 5
-            if (isNearBottom) listState.animateScrollToItem(lastListIndex)
+            if (isNearBottom) listState.scrollToChatItem(lastListIndex)
         }
     }
 
@@ -260,7 +260,7 @@ fun ChatScreen(
                         scope.launch {
                             val idx = findScrollIndex(grouped, replyMsgId)
                             if (idx >= 0) {
-                                listState.animateScrollToItem(idx)
+                                listState.scrollToChatItem(idx)
                                 highlightId = replyMsgId
                                 delay(1600)
                                 highlightId = null

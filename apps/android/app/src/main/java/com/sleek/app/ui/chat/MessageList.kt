@@ -4,6 +4,9 @@ import android.app.ActivityManager
 import android.content.Context
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,7 +84,22 @@ internal fun MessageList(
     }
 
     // ── Rubber band overscroll ─────────────────────────────────────────────────
-    val maxOverscrollPx = with(LocalDensity.current) { 40.dp.toPx() }
+    val density = LocalDensity.current
+    val maxFlingVelocityPx = with(density) { if (isLowRam) 2200.dp.toPx() else 3200.dp.toPx() }
+    val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
+    val cappedFlingBehavior = remember(defaultFlingBehavior, maxFlingVelocityPx) {
+        object : FlingBehavior {
+            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                val cappedVelocity = initialVelocity.coerceIn(
+                    minimumValue = -maxFlingVelocityPx,
+                    maximumValue = maxFlingVelocityPx,
+                )
+                return with(defaultFlingBehavior) { performFling(cappedVelocity) }
+            }
+        }
+    }
+
+    val maxOverscrollPx = with(density) { 40.dp.toPx() }
 
     var overscrollOffset by remember { mutableFloatStateOf(0f) }
     val overscrollConnection = remember(isLowRam, maxOverscrollPx) {
@@ -148,6 +166,7 @@ internal fun MessageList(
                 .fillMaxSize()
                 .graphicsLayer { translationY = overscrollOffset },
             contentPadding = PaddingValues(vertical = 8.dp),
+            flingBehavior  = cappedFlingBehavior,
         ) {
             grouped.forEach { (dateLabel, msgs) ->
                 // Date separator

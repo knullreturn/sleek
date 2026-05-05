@@ -1,8 +1,10 @@
 package com.sleek.app.ui.chat
 
+import androidx.compose.foundation.lazy.LazyListState
 import com.sleek.app.data.model.Message
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.abs
 
 /** Groups a flat message list into [(dateLabel, messages)] for the LazyColumn. */
 internal fun groupByDate(messages: List<Message>): List<Pair<String, List<Message>>> {
@@ -40,3 +42,19 @@ internal fun chatLazyItemCount(
     grouped: List<Pair<String, List<Message>>>,
     hasTyping: Boolean = false,
 ): Int = grouped.sumOf { (_, msgs) -> 1 + msgs.size } + if (hasTyping) 1 else 0
+
+/** Avoid animating across a long chat; Compose composes too much too quickly on weaker devices. */
+internal suspend fun LazyListState.scrollToChatItem(
+    targetIndex: Int,
+    animateNearby: Boolean = true,
+    nearbyThreshold: Int = 6,
+) {
+    val safeTarget = targetIndex.coerceAtLeast(0)
+    val distance = abs(safeTarget - firstVisibleItemIndex)
+
+    if (animateNearby && distance <= nearbyThreshold) {
+        animateScrollToItem(safeTarget)
+    } else {
+        scrollToItem(safeTarget)
+    }
+}
