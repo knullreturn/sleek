@@ -25,11 +25,13 @@ import javax.inject.Inject
 data class ChatUiState(
     val messages:       List<Message>                        = emptyList(),
     val grouped:        MessageGroups                        = MessageGroups(), // pre-computed off UI thread
-    val peerHasReplied: Boolean                             = false,        // pre-computed off UI thread
+    val peerHasReplied: Boolean                             = false,
     val isLoading:      Boolean                             = true,
     val typingUsers:    List<String>                        = emptyList(),
     val seenUpToId:     String?                             = null,
     val peer:           User?                               = null,
+    val hasMoreMessages: Boolean                            = false,  // true = older messages exist above
+    val isLoadingOlder: Boolean                             = false,  // scroll-up pagination in progress
 )
 
 @HiltViewModel
@@ -75,7 +77,36 @@ class ChatViewModel @Inject constructor(
     fun preloadChat(chatId: String) {
         if (currentChatId == chatId) return  // already loaded
         viewModelScope.launch(Dispatchers.IO) {
-            messageRepository.observeMessages(chatId).first()  // prime the DB query
+            messageRepository.observeLatestMessages(chatId, 60).first()  // prime windowed query
+        }
+    }
+
+    /** Scroll-up pagination: load the page of messages before the oldest visible one */
+    fun loadOlderMessages() {
+        val chatId = currentChatId.ifEmpty { return }
+        val oldest = _state.value.messages.firstOrNull()?.createdAt ?: return
+        if (_state.value.isLoadingOlder) return
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingOlder = true) }
+            val older = withContext(Dispatchers.IO) {
+                messageRepository.loadMessagesBefore(chatId, oldest, limit = 40)
+            }
+            val current = _state.value.messages
+            val merged  = (older + current).distinctBy { it.id }
+            val (grouped, _, _) = withContext(Dispatchers.Default) {
+                val g = groupByDate(merged)
+                val p = merged.firstOrNull { it.senderId != cachedMyId }?.sender
+                val r = merged.lastOrNull()?.senderId != cachedMyId
+                Triple(g, p, r)
+            }
+            _state.update { s ->
+                s.copy(
+                    messages       = merged,
+                    grouped        = grouped,
+                    isLoadingOlder = false,
+                    hasMoreMessages = older.size >= 40,  // if we got a full page, there may be more
+                )
+            }
         }
     }
 
@@ -118,11 +149,11 @@ class ChatViewModel @Inject constructor(
             if (cachedMyId == null) cachedMyId = tokenDataStore.userId.first()
             val myId = cachedMyId
 
-            // 1. Room Flow — scoped to this chat, cancelled on next init()
-            messageRepository.observeMessages(chatId)
+            // 1. Windowed Room Flow — latest 60 messages, scoped to this chat
+            // Performance: emits only 60 objects per update instead of full history
+            messageRepository.observeLatestMessages(chatId, limit = 60)
                 .onEach { messages ->
                     if (currentChatId != chatId) return@onEach
-                    // Group messages on background thread — never blocks scroll
                     val (grouped, peer, peerHasReplied) = withContext(Dispatchers.Default) {
                         val g = groupByDate(messages)
                         val p = messages.firstOrNull { it.senderId != myId }?.sender
@@ -131,11 +162,13 @@ class ChatViewModel @Inject constructor(
                     }
                     _state.update { s ->
                         s.copy(
-                            messages       = messages,
-                            grouped        = grouped,
-                            peerHasReplied = peerHasReplied,
-                            isLoading      = if (messages.isNotEmpty()) false else s.isLoading,
-                            peer           = peer ?: s.peer,
+                            messages        = messages,
+                            grouped         = grouped,
+                            peerHasReplied  = peerHasReplied,
+                            isLoading       = if (messages.isNotEmpty()) false else s.isLoading,
+                            peer            = peer ?: s.peer,
+                            // Show "load older" button if DB has more than 60 rows for this chat
+                            hasMoreMessages = if (messages.size >= 60) true else s.hasMoreMessages,
                         )
                     }
                 }

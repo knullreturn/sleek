@@ -50,6 +50,18 @@ class MessageRepository @Inject constructor(
     fun observeMessages(chatId: String): Flow<List<Message>> =
         dao.observeMessages(chatId).map { it.map { e -> e.toMessage() } }
 
+    /**
+     * Windowed live stream — only the latest [limit] messages (default 60).
+     * Use this for the chat screen: Room only allocates ~60 objects per emission
+     * instead of the entire history.
+     */
+    fun observeLatestMessages(chatId: String, limit: Int = 60): Flow<List<Message>> =
+        dao.observeLatestMessages(chatId, limit).map { it.map { e -> e.toMessage() } }
+
+    /** Load the previous page of messages older than [beforeCreatedAt] */
+    suspend fun loadMessagesBefore(chatId: String, beforeCreatedAt: String, limit: Int = 40): List<Message> =
+        dao.getMessagesBefore(chatId, beforeCreatedAt, limit).map { it.toMessage() }
+
     // ── Suspend helpers (IO thread) ───────────────────────────────────────────
 
     /** True if Room has at least one row for this chat */

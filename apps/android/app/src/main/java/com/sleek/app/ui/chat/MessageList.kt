@@ -39,6 +39,9 @@ internal fun MessageList(
     listState:            LazyListState,
     highlightedMessageId: String?,
     typingUsers:          List<String>,
+    hasMoreMessages:      Boolean,
+    isLoadingOlder:       Boolean,
+    onLoadOlder:          () -> Unit,
     onLongPress:          (Message) -> Unit,
     onReplyTap:           (String) -> Unit,
     onSwipeReply:         (Message) -> Unit,
@@ -126,6 +129,32 @@ internal fun MessageList(
             contentPadding = PaddingValues(vertical = 8.dp),
             flingBehavior  = cappedFlingBehavior,
         ) {
+            // ── "Load earlier messages" button — shown when windowed view has history above it
+            if (hasMoreMessages) {
+                item(key = "load_older", contentType = "pagination") {
+                    Box(
+                        modifier         = Modifier.fillMaxWidth().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isLoadingOlder) {
+                            CircularProgressIndicator(
+                                modifier  = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color     = AppTheme.colors.accent,
+                            )
+                        } else {
+                            TextButton(onClick = onLoadOlder) {
+                                Text(
+                                    text  = "↑ Load earlier messages",
+                                    style = AppTheme.typography.caption,
+                                    color = AppTheme.colors.textSecondary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             grouped.groups.forEach { group ->
                 val dateLabel = group.label
 

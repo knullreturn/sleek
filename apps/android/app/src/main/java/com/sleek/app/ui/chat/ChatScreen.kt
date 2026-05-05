@@ -147,8 +147,23 @@ fun ChatScreen(
             listState.scrollToChatItem(maxOf(0, totalItems - 1))
     }
 
-    // Fix: removed LaunchedEffect(imeBottom) — explicit scroll on keyboard open caused
-    // a double-movement jump. adjustResize + imePadding() handles this correctly on its own.
+    // Keyboard open → scroll list to stay at bottom so messages aren't hidden.
+    // Fix: the previous version used delay(50) + animateScrollToItem which created a
+    // double-movement jump (layout resized AND animated scroll fought each other).
+    // Instant scrollToItem with no delay fires in sync with the resize — one clean movement.
+    // Guard: only scroll if user is already near the bottom (don't yank them away from history).
+    val density   = LocalDensity.current
+    val imeBottom = WindowInsets.ime.getBottom(density)
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > 0 && state.messages.isNotEmpty()) {
+            val totalItems   = listState.layoutInfo.totalItemsCount
+            val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val isNearBottom = lastVisible >= totalItems - 6
+            if (isNearBottom) {
+                listState.scrollToItem(lastListIndex)  // instant — no animation, no jump
+            }
+        }
+    }
 
     // Typing indicator → scroll to show it
     LaunchedEffect(showTyping) {
@@ -267,6 +282,9 @@ fun ChatScreen(
                     listState            = listState,
                     highlightedMessageId = highlightId,
                     typingUsers          = if (showTyping) state.typingUsers else emptyList(),
+                    hasMoreMessages      = state.hasMoreMessages,
+                    isLoadingOlder       = state.isLoadingOlder,
+                    onLoadOlder          = { viewModel.loadOlderMessages() },
                     onLongPress          = { contextMsg = it },
                     onReplyTap           = { replyMsgId ->
                         scope.launch {
