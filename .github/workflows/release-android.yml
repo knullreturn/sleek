@@ -36,11 +36,20 @@ jobs:
       - name: Inject google-services.json
         run: echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > apps/android/app/google-services.json
 
-      # Use the runner's built-in debug keystore — no secrets needed.
-      # Produces a fully installable APK for sideloading/testing.
-      # Swap to a production keystore before Play Store submission.
-      - name: Create keystore.properties (debug keystore)
+      # Generate debug keystore (runners don't have it pre-created)
+      - name: Generate debug keystore & create keystore.properties
         run: |
+          mkdir -p /root/.android
+          keytool -genkeypair -v \
+            -keystore /root/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -noprompt
           cat > apps/android/keystore.properties <<EOF
           storeFile=/root/.android/debug.keystore
           storePassword=android
