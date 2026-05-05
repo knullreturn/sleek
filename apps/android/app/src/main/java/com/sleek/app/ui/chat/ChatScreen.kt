@@ -190,34 +190,29 @@ fun ChatScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            AnimatedVisibility(
-                visible = contentVisible,
-                enter   = fadeIn(tween(180, easing = LinearOutSlowInEasing)),
-            ) {
-                MessageList(
-                    grouped              = grouped,
-                    myId                 = myId,
-                    peerHasReplied       = peerHasReplied,
-                    seenUpToId           = state.seenUpToId,
-                    isLoading            = state.isLoading,
-                    listState            = listState,
-                    highlightedMessageId = highlightId,
-                    typingUsers          = state.typingUsers,
-                    onLongPress          = { contextMsg = it },
-                    onReplyTap           = { replyMsgId ->
-                        scope.launch {
-                            val idx = findScrollIndex(grouped, replyMsgId)
-                            if (idx >= 0) {
-                                listState.animateScrollToItem(idx)
-                                highlightId = replyMsgId
-                                delay(1600)
-                                highlightId = null
-                            }
+            MessageList(
+                grouped              = grouped,
+                myId                 = myId,
+                peerHasReplied       = peerHasReplied,
+                seenUpToId           = state.seenUpToId,
+                isLoading            = state.isLoading,
+                listState            = listState,
+                highlightedMessageId = highlightId,
+                typingUsers          = state.typingUsers,
+                onLongPress          = { contextMsg = it },
+                onReplyTap           = { replyMsgId ->
+                    scope.launch {
+                        val idx = findScrollIndex(grouped, replyMsgId)
+                        if (idx >= 0) {
+                            listState.animateScrollToItem(idx)
+                            highlightId = replyMsgId
+                            delay(1600)
+                            highlightId = null
                         }
-                    },
-                    onSwipeReply         = { replyingTo = it },
-                )
-            }
+                    }
+                },
+                onSwipeReply         = { replyingTo = it },
+            )
         }
     }
 }
