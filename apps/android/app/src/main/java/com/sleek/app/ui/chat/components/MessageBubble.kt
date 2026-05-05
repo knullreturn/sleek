@@ -219,11 +219,12 @@ fun MessageBubble(
                                 )
                             } else {
                                 val timeStr   = remember(message.createdAt) { formatBubbleTime(message.createdAt) }
-                                val timeColor = remember(isSeen, isOwn) {
+                                val textMuted = AppTheme.colors.textMuted
+                                val timeColor = remember(isSeen, isOwn, textMuted) {
                                     when {
                                         isSeen -> SeenGreen
                                         isOwn  -> Color.White.copy(alpha = 0.45f)
-                                        else   -> AppTheme.colors.textMuted
+                                        else   -> textMuted
                                     }
                                 }
                                 val trailingSpacer = if (canPeek) "  edited  $timeStr" else "  $timeStr"
