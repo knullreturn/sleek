@@ -1,12 +1,7 @@
 package com.sleek.app.ui.chat
 
-import android.app.ActivityManager
-import android.content.Context
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.FlingBehavior
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.chat.components.MessageBubble
@@ -81,26 +75,7 @@ internal fun MessageList(
         return
     }
 
-    val context = LocalContext.current
 
-    val isLowRam = remember {
-        (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).isLowRamDevice
-    }
-
-    // Capped fling — kept from before (measure with JankStats before removing)
-    val density = LocalDensity.current
-    val maxFlingVelocityPx = with(density) { if (isLowRam) 1800.dp.toPx() else 2600.dp.toPx() }
-    val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
-    val cappedFlingBehavior = remember(defaultFlingBehavior, maxFlingVelocityPx) {
-        object : FlingBehavior {
-            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                val cappedVelocity = initialVelocity.coerceIn(-maxFlingVelocityPx, maxFlingVelocityPx)
-                return with(defaultFlingBehavior) { performFling(cappedVelocity) }
-            }
-        }
-    }
-
-    // ── Auto-load older messages when scrolled to the top (= end of reversed list) ──
     LaunchedEffect(listState, hasMoreMessages) {
         snapshotFlow {
             // Read totalItems INSIDE snapshotFlow so it updates reactively
@@ -152,13 +127,8 @@ internal fun MessageList(
         LazyColumn(
             state          = listState,
             modifier       = Modifier.fillMaxSize(),
-            // P1: reverseLayout = true
-            // - item(0) renders at BOTTOM (newest first in data → newest at bottom visually)
-            // - new messages prepend at index 0 = instant O(1) bottom anchor
-            // - no "jump to bottom" hacks needed
             reverseLayout  = true,
             contentPadding = PaddingValues(vertical = 8.dp),
-            flingBehavior  = cappedFlingBehavior,
         ) {
             // ── Typing indicator — index 0 = BOTTOM of reversed list ──────────
             // Appears just below the latest message, above the input bar.
