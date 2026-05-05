@@ -46,8 +46,9 @@ jobs:
 
       - name: Create keystore.properties
         run: |
+          KEYSTORE_PATH="$(pwd)/apps/android/sleek-release.keystore"
           cat > apps/android/keystore.properties <<EOF
-          storeFile=../../sleek-release.keystore
+          storeFile=${KEYSTORE_PATH}
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.KEY_ALIAS }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
