@@ -182,7 +182,7 @@ fun ChatListScreen(
                 }
 
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(chats, key = { it.id }) { chat ->
+                    items(chats, key = { it.id }, contentType = { "chat_item" }) { chat ->
                         val peer = myId?.let { viewModel.getDmPeer(chat, it) }
                         ChatListItem(
                             chat        = chat,

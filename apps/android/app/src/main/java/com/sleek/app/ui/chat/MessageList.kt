@@ -63,7 +63,7 @@ internal fun MessageList(
     ) {
         grouped.forEach { (dateLabel, msgs) ->
             // Date separator
-            item(key = "sep_$dateLabel") {
+            item(key = "sep_$dateLabel", contentType = "date_sep") {
                 Box(
                     modifier         = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
@@ -84,7 +84,7 @@ internal fun MessageList(
             }
 
             // Messages
-            itemsIndexed(msgs, key = { _, m -> m.id }) { index, msg ->
+            itemsIndexed(msgs, key = { _, m -> m.id }, contentType = { _, _ -> "message" }) { index, msg ->
                 val isOwn      = msg.senderId == myId
                 val prev       = if (index > 0) msgs[index - 1] else null
                 val showAvatar = prev == null || prev.senderId != msg.senderId
@@ -105,7 +105,7 @@ internal fun MessageList(
 
         // Typing indicator
         if (typingUsers.isNotEmpty()) {
-            item(key = "typing") { TypingIndicator(names = typingUsers) }
+            item(key = "typing", contentType = "typing") { TypingIndicator(names = typingUsers) }
         }
     }
 }
