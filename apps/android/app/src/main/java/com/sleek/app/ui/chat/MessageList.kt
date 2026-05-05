@@ -31,7 +31,7 @@ import kotlinx.coroutines.delay
  */
 @Composable
 internal fun MessageList(
-    grouped:              List<Pair<String, List<Message>>>,
+    grouped:              MessageGroups,
     myId:                 String?,
     peerHasReplied:       Boolean,
     seenUpToId:           String?,
@@ -97,9 +97,10 @@ internal fun MessageList(
     // Build index → date label mapping once per grouped change
     val indexToDate = remember(grouped) {
         buildList {
-            grouped.forEach { (label, msgs) ->
+            grouped.groups.forEach { group ->
+                val label = group.label
                 add(label)              // separator item
-                repeat(msgs.size) { add(label) }  // message items
+                repeat(group.rows.size) { add(label) }  // message items
             }
         }
     }
@@ -125,7 +126,9 @@ internal fun MessageList(
             contentPadding = PaddingValues(vertical = 8.dp),
             flingBehavior  = cappedFlingBehavior,
         ) {
-            grouped.forEach { (dateLabel, msgs) ->
+            grouped.groups.forEach { group ->
+                val dateLabel = group.label
+
                 // Date separator
                 item(key = "sep_$dateLabel", contentType = "date_sep") {
                     Box(
@@ -149,17 +152,25 @@ internal fun MessageList(
 
                 // Messages
                 itemsIndexed(
-                    msgs,
-                    key         = { _, m -> m.id },
-                    contentType = { _, _ -> "message" },
-                ) { index, msg ->
+                    group.rows,
+                    key         = { _, row -> row.message.id },
+                    contentType = { _, row ->
+                        when {
+                            row.message.deletedAt != null -> "message_deleted"
+                            row.message.replyTo != null   -> "message_reply"
+                            else                          -> "message_text"
+                        }
+                    },
+                ) { index, row ->
+                    val msg        = row.message
                     val isOwn      = msg.senderId == myId
-                    val prev       = if (index > 0) msgs[index - 1] else null
+                    val prev       = if (index > 0) group.rows[index - 1].message else null
                     val showAvatar = prev == null || prev.senderId != msg.senderId
                     val isSeen     = isOwn && !peerHasReplied && msg.id == seenUpToId
 
                     MessageBubble(
                         message           = msg,
+                        timeText          = row.timeText,
                         isOwn             = isOwn,
                         showAvatar        = showAvatar,
                         isSeen            = isSeen,

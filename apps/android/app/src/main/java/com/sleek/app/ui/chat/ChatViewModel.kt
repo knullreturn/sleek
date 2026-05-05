@@ -1,5 +1,6 @@
 package com.sleek.app.ui.chat
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sleek.app.data.local.SettingsDataStore
@@ -20,9 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+@Immutable
 data class ChatUiState(
     val messages:       List<Message>                        = emptyList(),
-    val grouped:        List<Pair<String, List<Message>>>    = emptyList(), // pre-computed off UI thread
+    val grouped:        MessageGroups                        = MessageGroups(), // pre-computed off UI thread
     val peerHasReplied: Boolean                             = false,        // pre-computed off UI thread
     val isLoading:      Boolean                             = true,
     val typingUsers:    List<String>                        = emptyList(),

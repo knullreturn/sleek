@@ -8,7 +8,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Reply
@@ -21,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.SpanStyle
@@ -31,15 +29,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Composable
 fun MessageBubble(
     message:       Message,
+    timeText:      String,
     isOwn:         Boolean,
     showAvatar:    Boolean,
     isSeen:        Boolean,
@@ -215,7 +211,6 @@ fun MessageBubble(
                                     ),
                                 )
                             } else {
-                                val timeStr   = remember(message.createdAt) { formatBubbleTime(message.createdAt) }
                                 val textMuted = AppTheme.colors.textMuted
                                 val timeColor = remember(isSeen, isOwn, textMuted) {
                                     when {
@@ -224,7 +219,7 @@ fun MessageBubble(
                                         else   -> textMuted
                                     }
                                 }
-                                val trailingSpacer = if (canPeek) "  edited  $timeStr" else "  $timeStr"
+                                val trailingSpacer = if (canPeek) "  edited  $timeText" else "  $timeText"
 
                                 Box {
                                     Text(
@@ -266,7 +261,7 @@ fun MessageBubble(
                                             )
                                         }
                                         Text(
-                                            text  = timeStr,
+                                            text  = timeText,
                                             style = MaterialTheme.typography.labelSmall.copy(color = timeColor),
                                         )
                                     }
@@ -279,10 +274,3 @@ fun MessageBubble(
         }
     }
 }
-
-fun formatBubbleTime(isoString: String): String = try {
-    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-    sdf.timeZone = TimeZone.getTimeZone("UTC")
-    val date = sdf.parse(isoString) ?: return ""
-    SimpleDateFormat("h:mm a", Locale.getDefault()).format(date)
-} catch (_: Exception) { "" }
