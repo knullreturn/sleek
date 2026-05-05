@@ -138,15 +138,15 @@ internal fun MessageList(
                     ) {
                         if (isLoadingOlder) {
                             CircularProgressIndicator(
-                                modifier  = Modifier.size(20.dp),
+                                modifier    = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color     = AppTheme.colors.accent,
+                                color       = MaterialTheme.colorScheme.primary,
                             )
                         } else {
                             TextButton(onClick = onLoadOlder) {
                                 Text(
                                     text  = "↑ Load earlier messages",
-                                    style = AppTheme.typography.caption,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = AppTheme.colors.textSecondary,
                                 )
                             }
