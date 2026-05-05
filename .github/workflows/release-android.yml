@@ -44,6 +44,15 @@ jobs:
       - name: Inject release keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > apps/android/sleek-release.keystore
 
+      - name: Create keystore.properties
+        run: |
+          cat > apps/android/keystore.properties <<EOF
+          storeFile=../../sleek-release.keystore
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
+
       - name: Build release APK
         working-directory: apps/android
         run: ./gradlew assembleRelease --no-daemon --stacktrace

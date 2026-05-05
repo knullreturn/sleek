@@ -23,8 +23,8 @@ android {
         applicationId   = "com.sleek.app"
         minSdk          = 26
         targetSdk       = 35
-        versionCode     = 1
-        versionName     = "1.0.0"
+        versionCode     = 2
+        versionName     = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -45,9 +45,6 @@ android {
 
     buildTypes {
         release {
-            // R8 full-mode: dead code elimination, inlining, dex optimisation.
-            // This is the single biggest driver of cold-start performance.
-            // Without it release == debug in terms of bytecode quality.
             isMinifyEnabled   = true
             isShrinkResources = true
             signingConfig     = signingConfigs.getByName("release")
