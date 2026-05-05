@@ -79,9 +79,18 @@ class AuthViewModel @Inject constructor(
                     android.util.Log.e("AUTH", "Sign-in failed ${res.code()}: $errBody")
                     _state.value = AuthUiState.Error("Sign-in failed. Try again.")
                 }
+            } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
+                // User actually pressed back / dismissed the sheet
+                _state.value = AuthUiState.Idle
+            } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+                android.util.Log.e("AUTH", "NoCredentialException: ${e.message}")
+                _state.value = AuthUiState.Error("No Google account found. Please add a Google account in your device Settings.")
             } catch (e: GetCredentialException) {
-                _state.value = AuthUiState.Error("Google Sign-In cancelled")
+                // Any other credential error — log the real type for debugging
+                android.util.Log.e("AUTH", "GetCredentialException [${e.javaClass.simpleName}]: ${e.message}\n${e.stackTraceToString()}")
+                _state.value = AuthUiState.Error("Sign-in error: ${e.javaClass.simpleName}")
             } catch (e: Exception) {
+                android.util.Log.e("AUTH", "Unexpected: ${e.message}\n${e.stackTraceToString()}")
                 _state.value = AuthUiState.Error(e.message ?: "Something went wrong")
             }
         }
