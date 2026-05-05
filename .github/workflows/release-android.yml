@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
@@ -39,9 +41,9 @@ jobs:
       # Generate debug keystore (runners don't have it pre-created)
       - name: Generate debug keystore & create keystore.properties
         run: |
-          mkdir -p /root/.android
+          mkdir -p $HOME/.android
           keytool -genkeypair -v \
-            -keystore /root/.android/debug.keystore \
+            -keystore $HOME/.android/debug.keystore \
             -storepass android \
             -alias androiddebugkey \
             -keypass android \
@@ -51,7 +53,7 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US" \
             -noprompt
           cat > apps/android/keystore.properties <<EOF
-          storeFile=/root/.android/debug.keystore
+          storeFile=$HOME/.android/debug.keystore
           storePassword=android
           keyAlias=androiddebugkey
           keyPassword=android
