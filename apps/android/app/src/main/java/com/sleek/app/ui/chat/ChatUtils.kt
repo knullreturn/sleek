@@ -24,7 +24,19 @@ data class MessageRow(
     val timeText: String,
 )
 
-/** Groups messages and precomputes row display text off the UI thread. */
+/**
+ * Groups messages and precomputes row display text off the UI thread.
+ *
+ * P1 change: input is now in DESC order (newest first) because the DAO query
+ * returns DESC for reverseLayout=true. Groups are also built in DESC order:
+ *   groups[0] = today's messages, groups[1] = yesterday's messages, ...
+ *
+ * With reverseLayout=true, LazyColumn renders item(0) at the bottom, so:
+ *   - groups[0] (today) renders at the bottom ✓
+ *   - groups[last] (oldest day) renders at the top ✓
+ *   - Date separator for each group is placed AFTER the group's messages in the
+ *     item list, which means it renders ABOVE the group visually (reversed) ✓
+ */
 internal fun groupByDate(messages: List<Message>): MessageGroups {
     val result   = mutableListOf<Pair<String, MutableList<MessageRow>>>()
     val isoFmt   = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).also { it.timeZone = TimeZone.getTimeZone("UTC") }
@@ -33,6 +45,7 @@ internal fun groupByDate(messages: List<Message>): MessageGroups {
     val timeFmt  = SimpleDateFormat("h:mm a", Locale.getDefault())
     val today    = keyFmt.format(Date())
 
+    // messages arrive newest-first (DESC); iterate and group in that order
     for (msg in messages) {
         val date   = try { isoFmt.parse(msg.createdAt) } catch (_: Exception) { null } ?: continue
         val dayKey = keyFmt.format(date)
@@ -45,14 +58,20 @@ internal fun groupByDate(messages: List<Message>): MessageGroups {
     return MessageGroups(result.map { (label, rows) -> MessageGroup(label, rows) })
 }
 
-/** Finds the LazyColumn index (accounting for date-separator items) for a given message id. */
+/**
+ * Finds the LazyColumn index for a given message id.
+ *
+ * P1: with reverseLayout, items are laid out in this order per group:
+ *   [msg_0, msg_1, ..., msg_n, SEPARATOR]   ← separator is last in the group
+ * Groups are in DESC order (newest first), so group 0 starts at index 0.
+ */
 internal fun findScrollIndex(grouped: MessageGroups, targetId: String): Int {
     var idx = 0
     for (group in grouped.groups) {
-        idx++ // separator item
+        // Messages come first, separator last (reversed rendering order)
         val pos = group.rows.indexOfFirst { it.message.id == targetId }
         if (pos >= 0) return idx + pos
-        idx += group.rows.size
+        idx += group.rows.size + 1  // +1 for the separator item after messages
     }
     return -1
 }

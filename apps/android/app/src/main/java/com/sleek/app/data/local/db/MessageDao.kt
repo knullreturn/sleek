@@ -12,21 +12,18 @@ interface MessageDao {
     fun observeMessages(chatId: String): Flow<List<MessageEntity>>
 
     /**
-     * Windowed live query — only the latest [limit] messages.
-     * Inner SELECT is sorted DESC (newest first) then the outer re-sorts ASC so
-     * the list displays oldest→newest as expected.
+     * Windowed live query — only the latest [limit] messages in DESC order (newest first).
      *
-     * Benefit: Room only materialises [limit] objects per emission instead of
-     * the full history. Cold-open of a chat with 500 messages drops from
-     * ~500 object allocations to ~60.
+     * With reverseLayout=true in the LazyColumn, item(0) renders at the bottom,
+     * so DESC data = newest at bottom visually. Benefit over the previous outer-ASC
+     * approach: single sort pass, and new messages prepend at index 0 (O(1)),
+     * rather than appending to the end which forced LazyColumn to re-anchor.
      */
     @Query("""
-        SELECT * FROM (
-            SELECT * FROM messages
-            WHERE chatId = :chatId
-            ORDER BY createdAt DESC
-            LIMIT :limit
-        ) ORDER BY createdAt ASC
+        SELECT * FROM messages
+        WHERE chatId = :chatId
+        ORDER BY createdAt DESC
+        LIMIT :limit
     """)
     fun observeLatestMessages(chatId: String, limit: Int = 60): Flow<List<MessageEntity>>
 

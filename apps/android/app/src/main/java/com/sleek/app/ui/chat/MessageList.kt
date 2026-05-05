@@ -28,6 +28,15 @@ import kotlinx.coroutines.delay
  * Renders the message list area: loading skeleton, date-grouped LazyColumn,
  * floating date pill, controlled fling, and typing indicator.
  * Fully stateless — all data/callbacks flow in.
+ *
+ * P1: reverseLayout = true
+ *   - Item 0 = newest message (rendered at BOTTOM)
+ *   - Item N = oldest message (rendered at TOP)
+ *   - "scroll to bottom" = scrollToItem(0)
+ *   - Typing indicator at index 0 so it appears below the latest message
+ *   - "Load older" auto-triggers when the list reaches the END (top visually)
+ *   - Date separators placed AFTER their group's messages in item order,
+ *     so they render ABOVE the group visually (because layout is reversed)
  */
 @Composable
 internal fun MessageList(
@@ -47,7 +56,6 @@ internal fun MessageList(
     onSwipeReply:         (Message) -> Unit,
 ) {
     if (isLoading) {
-        // Skeleton — only shown on absolute first open (no Room cache yet)
         Column(
             modifier            = Modifier.fillMaxSize().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -75,40 +83,58 @@ internal fun MessageList(
 
     val context = LocalContext.current
 
-    // ── Low-end device detection (gentler fling on low-RAM devices) ─────
     val isLowRam = remember {
         (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).isLowRamDevice
     }
 
-    // ── Capped fling — chat should feel controlled on weaker devices ─────
+    // Capped fling — kept from before (measure with JankStats before removing)
     val density = LocalDensity.current
     val maxFlingVelocityPx = with(density) { if (isLowRam) 1800.dp.toPx() else 2600.dp.toPx() }
     val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
     val cappedFlingBehavior = remember(defaultFlingBehavior, maxFlingVelocityPx) {
         object : FlingBehavior {
             override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                val cappedVelocity = initialVelocity.coerceIn(
-                    minimumValue = -maxFlingVelocityPx,
-                    maximumValue = maxFlingVelocityPx,
-                )
+                val cappedVelocity = initialVelocity.coerceIn(-maxFlingVelocityPx, maxFlingVelocityPx)
                 return with(defaultFlingBehavior) { performFling(cappedVelocity) }
             }
         }
     }
 
-    // ── Floating date pill ─────────────────────────────────────────────────────
-    // Build index → date label mapping once per grouped change
-    val indexToDate = remember(grouped) {
-        buildList {
-            grouped.groups.forEach { group ->
-                val label = group.label
-                add(label)              // separator item
-                repeat(group.rows.size) { add(label) }  // message items
+    // ── Auto-load older messages when scrolled to the top (= end of reversed list) ──
+    // With reverseLayout, "end" = largest index = oldest messages = top of screen.
+    // We trigger load when the last visible item is within 5 items of the list end.
+    val totalItems = chatLazyItemCount(grouped, hasTyping = typingUsers.isNotEmpty())
+    LaunchedEffect(listState, hasMoreMessages) {
+        snapshotFlow {
+            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= totalItems - 5
+        }.collect { nearEnd ->
+            if (nearEnd && hasMoreMessages && !isLoadingOlder) {
+                onLoadOlder()
             }
         }
     }
-    val currentDate by remember(indexToDate) {
-        derivedStateOf { indexToDate.getOrNull(listState.firstVisibleItemIndex) ?: "" }
+
+    // ── Floating date pill ─────────────────────────────────────────────────────
+    // P1: with reverseLayout, firstVisibleItemIndex = 0 is the BOTTOM (newest).
+    // The pill should still show the DATE of the topmost VISIBLE item.
+    // With reverseLayout, "topmost visually" = LAST visible item by index.
+    // We use lastVisibleItemIndex for the date label.
+    val indexToDate = remember(grouped) {
+        buildList {
+            grouped.groups.forEach { group ->
+                repeat(group.rows.size) { add(group.label) }  // message items
+                add(group.label)                               // separator item (comes after)
+            }
+        }
+    }
+    val currentDate by remember(indexToDate, listState) {
+        derivedStateOf {
+            // With reverseLayout, topmost visible item has the HIGHEST index
+            val topIdx = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: listState.firstVisibleItemIndex
+            indexToDate.getOrNull(topIdx) ?: ""
+        }
     }
     val isScrolling by remember { derivedStateOf { listState.isScrollInProgress } }
     val pillAlpha = remember { Animatable(0f) }
@@ -121,45 +147,70 @@ internal fun MessageList(
         }
     }
 
-    // ── Layout ─────────────────────────────────────────────────────────────────
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state          = listState,
             modifier       = Modifier.fillMaxSize(),
+            // P1: reverseLayout = true
+            // - item(0) renders at BOTTOM (newest first in data → newest at bottom visually)
+            // - new messages prepend at index 0 = instant O(1) bottom anchor
+            // - no "jump to bottom" hacks needed
+            reverseLayout  = true,
             contentPadding = PaddingValues(vertical = 8.dp),
             flingBehavior  = cappedFlingBehavior,
         ) {
-            // ── "Load earlier messages" button — shown when windowed view has history above it
-            if (hasMoreMessages) {
-                item(key = "load_older", contentType = "pagination") {
-                    Box(
-                        modifier         = Modifier.fillMaxWidth().padding(8.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isLoadingOlder) {
-                            CircularProgressIndicator(
-                                modifier    = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color       = MaterialTheme.colorScheme.primary,
-                            )
-                        } else {
-                            TextButton(onClick = onLoadOlder) {
-                                Text(
-                                    text  = "↑ Load earlier messages",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = AppTheme.colors.textSecondary,
-                                )
-                            }
-                        }
-                    }
+            // ── Typing indicator — index 0 = BOTTOM of reversed list ──────────
+            // Appears just below the latest message, above the input bar.
+            if (typingUsers.isNotEmpty()) {
+                item(key = "typing", contentType = "typing") {
+                    TypingIndicator(names = typingUsers)
                 }
             }
 
+            // ── Message groups (newest group first = index 0 = bottom) ────────
             grouped.groups.forEach { group ->
-                val dateLabel = group.label
+                // P1: messages first, separator last.
+                // With reverseLayout this renders as:
+                //   [separator (top of group)] [msg_oldest] ... [msg_newest (bottom of group)]
 
-                // Date separator
-                item(key = "sep_$dateLabel", contentType = "date_sep") {
+                // P4: Extended contentTypes — Compose's composition cache needs
+                // distinct types to avoid thrashing. 5 types vs previous 3.
+                itemsIndexed(
+                    group.rows,
+                    key         = { _, row -> row.message.id },
+                    contentType = { _, row ->
+                        when {
+                            row.message.deletedAt != null              -> "msg_deleted"
+                            row.message.replyTo   != null              -> "msg_reply"
+                            row.message.pinned                         -> "msg_pinned"
+                            row.message.edited                         -> "msg_edited"
+                            else                                       -> "msg_text"
+                        }
+                    },
+                ) { index, row ->
+                    val msg        = row.message
+                    val isOwn      = msg.senderId == myId
+                    // P1: in reversed order, the "previous sender" is index+1 (above in data = below visually)
+                    val prev       = if (index + 1 < group.rows.size) group.rows[index + 1].message else null
+                    val showAvatar = prev == null || prev.senderId != msg.senderId
+                    val isSeen     = isOwn && !peerHasReplied && msg.id == seenUpToId
+
+                    MessageBubble(
+                        message      = msg,
+                        timeText     = row.timeText,
+                        isOwn        = isOwn,
+                        showAvatar   = showAvatar,
+                        isSeen       = isSeen,
+                        isHighlighted = msg.id == highlightedMessageId,
+                        onLongPress  = { onLongPress(msg) },
+                        onReplyTap   = { onReplyTap(it) },
+                        onSwipeReply = { onSwipeReply(it) },
+                    )
+                }
+
+                // Date separator — comes AFTER messages in item order.
+                // With reverseLayout this renders ABOVE the group visually ✓
+                item(key = "sep_${group.label}", contentType = "date_sep") {
                     Box(
                         modifier         = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center,
@@ -170,7 +221,7 @@ internal fun MessageList(
                                 .padding(horizontal = 12.dp, vertical = 4.dp),
                         ) {
                             Text(
-                                text  = dateLabel,
+                                text  = group.label,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = AppTheme.colors.textSecondary,
                                 ),
@@ -178,51 +229,29 @@ internal fun MessageList(
                         }
                     }
                 }
-
-                // Messages
-                itemsIndexed(
-                    group.rows,
-                    key         = { _, row -> row.message.id },
-                    contentType = { _, row ->
-                        when {
-                            row.message.deletedAt != null -> "message_deleted"
-                            row.message.replyTo != null   -> "message_reply"
-                            else                          -> "message_text"
-                        }
-                    },
-                ) { index, row ->
-                    val msg        = row.message
-                    val isOwn      = msg.senderId == myId
-                    val prev       = if (index > 0) group.rows[index - 1].message else null
-                    val showAvatar = prev == null || prev.senderId != msg.senderId
-                    val isSeen     = isOwn && !peerHasReplied && msg.id == seenUpToId
-
-                    MessageBubble(
-                        message           = msg,
-                        timeText          = row.timeText,
-                        isOwn             = isOwn,
-                        showAvatar        = showAvatar,
-                        isSeen            = isSeen,
-                        isHighlighted     = msg.id == highlightedMessageId,
-                        onLongPress       = { onLongPress(msg) },
-                        onReplyTap        = { onReplyTap(it) },
-                        onSwipeReply      = { onSwipeReply(it) },
-                    )
-                }
             }
 
-            // Typing indicator
-            if (typingUsers.isNotEmpty()) {
-                item(key = "typing", contentType = "typing") {
-                    TypingIndicator(names = typingUsers)
+            // ── Load-older spinner — at the END of the reversed list (top visually) ──
+            if (isLoadingOlder) {
+                item(key = "load_older_spinner", contentType = "pagination") {
+                    Box(
+                        modifier         = Modifier.fillMaxWidth().padding(8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier    = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color       = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
 
-        // ── Floating date pill (overlay, top-center) ──────────────────────────
+        // ── Floating date pill ────────────────────────────────────────────────
         if (pillAlpha.value > 0f && currentDate.isNotEmpty()) {
             Box(
-                modifier         = Modifier
+                modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 8.dp)
                     .alpha(pillAlpha.value)

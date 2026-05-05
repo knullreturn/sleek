@@ -83,30 +83,30 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    /** Scroll-up pagination: load the page of messages before the oldest visible one */
+    /** Scroll-up pagination: load the page before the oldest visible message.
+     *  P1: messages are now in DESC order (newest first), so oldest = last(). */
     fun loadOlderMessages() {
         val chatId = currentChatId.ifEmpty { return }
-        val oldest = _state.value.messages.firstOrNull()?.createdAt ?: return
+        // P1: DESC order — oldest is at the END of the list
+        val oldest = _state.value.messages.lastOrNull()?.createdAt ?: return
         if (_state.value.isLoadingOlder) return
         viewModelScope.launch {
             _state.update { it.copy(isLoadingOlder = true) }
             val older = withContext(Dispatchers.IO) {
                 messageRepository.loadMessagesBefore(chatId, oldest, limit = 40)
             }
+            // older from DAO is already DESC (newest first within that page),
+            // so we append it to the current list to maintain DESC order:
+            //   [current_newest...current_oldest, older_newest...older_oldest]
             val current = _state.value.messages
-            val merged  = (older + current).distinctBy { it.id }
-            val (grouped, _, _) = withContext(Dispatchers.Default) {
-                val g = groupByDate(merged)
-                val p = merged.firstOrNull { it.senderId != cachedMyId }?.sender
-                val r = merged.lastOrNull()?.senderId != cachedMyId
-                Triple(g, p, r)
-            }
+            val merged  = (current + older).distinctBy { it.id }
+            val grouped = withContext(Dispatchers.Default) { groupByDate(merged) }
             _state.update { s ->
                 s.copy(
-                    messages       = merged,
-                    grouped        = grouped,
-                    isLoadingOlder = false,
-                    hasMoreMessages = older.size >= 40,  // if we got a full page, there may be more
+                    messages        = merged,
+                    grouped         = grouped,
+                    isLoadingOlder  = false,
+                    hasMoreMessages = older.size >= 40,
                 )
             }
         }

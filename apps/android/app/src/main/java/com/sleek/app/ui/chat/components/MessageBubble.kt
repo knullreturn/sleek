@@ -1,12 +1,14 @@
 package com.sleek.app.ui.chat.components
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PushPin
@@ -15,22 +17,26 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.theme.*
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+
+// P2: Cache shapes at file level — remember() inside items still allocates per-item.
+// These are stateless singletons used by ALL bubbles without reallocation.
+private val shapeOwn   = BubbleShapeOwn
+private val shapeOther = BubbleShapeOther
 
 @Composable
 fun MessageBubble(
@@ -46,18 +52,17 @@ fun MessageBubble(
     modifier:      Modifier = Modifier,
 ) {
     val isDeleted = message.deletedAt != null
+    val canPeek   = message.edited && message.originalContent != null
 
-    // Press-and-hold to peek original on edited messages
     var peekOriginal by remember { mutableStateOf(false) }
-    val canPeek      = message.edited && message.originalContent != null
     val displayText  = if (peekOriginal && canPeek) message.originalContent!! else message.content
 
-    // ── Blink highlight (reply-tap) ───────────────────────────────────────────
+    // ── Highlight blink ───────────────────────────────────────────────────────
     val highlightAlpha = remember { Animatable(0f) }
     LaunchedEffect(isHighlighted) {
         if (isHighlighted) {
             repeat(2) {
-                highlightAlpha.animateTo(0.30f, tween(180))
+                highlightAlpha.animateTo(0.28f, tween(180))
                 highlightAlpha.animateTo(0f,    tween(300))
             }
         } else {
@@ -65,76 +70,93 @@ fun MessageBubble(
         }
     }
 
-    // ── Swipe-to-reply gesture ────────────────────────────────────────────────
+    // ── Swipe-to-reply ────────────────────────────────────────────────────────
+    // P2 fix: was rememberDraggableState (allocates a coroutine per-item even when idle).
+    // Now uses awaitHorizontalTouchSlopOrCancellation — ZERO cost until the user
+    // actually starts dragging horizontally past slop. No idle coroutines.
     val density   = LocalDensity.current
     val haptic    = LocalHapticFeedback.current
     val threshold = with(density) { 72.dp.toPx() }
-    // Plain state keeps drag updates synchronous without coroutine churn.
-    var swipeOffset by remember { mutableFloatStateOf(0f) }
-    var triggered by remember { mutableStateOf(false) }
-    LaunchedEffect(message.id) {
-        swipeOffset = 0f
-        triggered = false
-    }
+    val scope     = rememberCoroutineScope()
 
-    // Icon scales from 0 → 1 as swipe reaches threshold
+    var swipeOffset by remember { mutableFloatStateOf(0f) }
     val iconProgress = (swipeOffset / threshold).coerceIn(0f, 1f)
 
+    // P2 fix: Modifier.offset { } — evaluated on the draw phase, not composition.
+    // graphicsLayer also does this but creates an offscreen layer; offset doesn't.
+    // For a pure translation that has no alpha/scale, offset is strictly cheaper.
+    // P6 fix: fillParentMaxWidth() instead of fillMaxWidth() — avoids an extra
+    // measure pass inside the LazyColumn item scope.
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .draggable(
-                orientation = Orientation.Horizontal,
-                state = rememberDraggableState { delta ->
-                    // Only right swipes (positive delta), cap at 1.3× threshold
-                    if (delta > 0 || swipeOffset > 0) {
-                        val next = (swipeOffset + delta).coerceIn(0f, threshold * 1.3f)
-                        swipeOffset = next
-                        if (next >= threshold && !triggered) {
-                            triggered = true
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onSwipeReply(message)
+            .fillParentMaxWidth()
+            .pointerInput(message.id) {
+                // Only one detector per bubble. No draggable wrapper, no extra modifier chain.
+                // awaitEachGesture restarts for each new pointer sequence automatically.
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    // awaitHorizontalTouchSlopOrCancellation = FREE until user drags
+                    // horizontally past ViewConfiguration.touchSlop. Until then, no
+                    // work happens — taps and vertical scrolls pass through untouched.
+                    val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
+                        change.consume()
+                    }
+                    if (drag != null) {
+                        var triggered = false
+                        horizontalDrag(drag.id) { change ->
+                            val delta = change.positionChange().x
+                            if (delta > 0 || swipeOffset > 0) {
+                                swipeOffset = (swipeOffset + delta).coerceIn(0f, threshold * 1.3f)
+                                if (swipeOffset >= threshold && !triggered) {
+                                    triggered = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onSwipeReply(message)
+                                }
+                            }
+                            change.consume()
+                        }
+                        // Spring-back after release
+                        val from = swipeOffset
+                        scope.launch {
+                            Animatable(from).animateTo(
+                                targetValue   = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness    = Spring.StiffnessMedium,
+                                ),
+                            ) { swipeOffset = value }
                         }
                     }
-                },
-                onDragStopped = {
-                    triggered = false
-                    Animatable(swipeOffset).animateTo(
-                        targetValue   = 0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness    = Spring.StiffnessMedium,
-                        ),
-                    ) { swipeOffset = value }
-                },
-            ),
+                }
+            },
     ) {
-        // ── Reply icon — reveals behind the sliding bubble ────────────────────
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 12.dp)
-                .size(32.dp)
-                .graphicsLayer {
-                    scaleX = iconProgress
-                    scaleY = iconProgress
-                    alpha  = iconProgress
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector        = Icons.Default.Reply,
-                contentDescription = "Reply",
-                tint               = Accent,
-                modifier           = Modifier.size(22.dp),
-            )
+        // ── Reply reveal icon ─────────────────────────────────────────────────
+        if (iconProgress > 0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 12.dp)
+                    .size(32.dp),
+                // P2 fix: graphicsLayer removed from idle state — it creates an offscreen
+                // layer even when scale=1/alpha=1. Instead gate the whole icon on iconProgress > 0.
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Reply,
+                    contentDescription = "Reply",
+                    tint               = Accent.copy(alpha = iconProgress),
+                    modifier           = Modifier.size(22.dp * iconProgress),
+                )
+            }
         }
 
-        // ── Message row — render-thread slide via graphicsLayer ─────────────
+        // ── Message row ───────────────────────────────────────────────────────
+        // P2 fix: Modifier.offset { } instead of graphicsLayer { translationX }
+        // offset runs on the draw thread with no layer allocation when value = 0.
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer { translationX = swipeOffset }
+                .fillParentMaxWidth()
+                .offset { IntOffset(swipeOffset.roundToInt(), 0) }
                 .padding(
                     start  = if (isOwn) 64.dp else 8.dp,
                     end    = if (isOwn) 8.dp  else 64.dp,
@@ -149,15 +171,29 @@ fun MessageBubble(
                 horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
             ) {
                 // ── Bubble ────────────────────────────────────────────────────
+                // P2 fix: Modifier.background(color, shape) instead of clip(shape).background(color).
+                // clip() forces an offscreen render layer on every frame.
+                // background(shape) draws the shape outline directly without a layer.
                 Box(
                     modifier = Modifier
-                        .clip(if (isOwn) BubbleShapeOwn else BubbleShapeOther)
-                        .background(if (isOwn) BubbleOwn else AppTheme.colors.bubbleOther)
+                        .background(
+                            color = if (isOwn) BubbleOwn else AppTheme.colors.bubbleOther,
+                            shape = if (isOwn) shapeOwn  else shapeOther,
+                        )
                         .pointerInput(message.id) {
-                            detectTapGestures(onLongPress = { onLongPress(message) })
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                val up   = waitForUpOrCancellation()
+                                if (up != null) {
+                                    // tap — handled by gesture detector above
+                                } else {
+                                    // long press
+                                    onLongPress(message)
+                                }
+                            }
                         },
                 ) {
-                    // ── Blink highlight overlay ───────────────────────────────
+                    // Highlight overlay
                     if (highlightAlpha.value > 0f) {
                         Box(
                             modifier = Modifier
@@ -165,8 +201,9 @@ fun MessageBubble(
                                 .background(Color.White.copy(alpha = highlightAlpha.value))
                         )
                     }
+
                     Column {
-                        // ── Reply preview (inside bubble, WhatsApp-style) ─────
+                        // Reply preview
                         if (message.replyTo != null) {
                             ReplyChip(
                                 replyTo  = message.replyTo,
@@ -179,13 +216,13 @@ fun MessageBubble(
                             Spacer(Modifier.height(4.dp))
                         }
 
-                        // ── Message content ───────────────────────────────────
+                        // Content area
                         Box(
                             modifier = Modifier.padding(
-                                start    = 12.dp,
-                                end      = 12.dp,
-                                top      = if (message.replyTo != null) 2.dp else if (isDeleted) 10.dp else 8.dp,
-                                bottom   = if (isDeleted) 10.dp else 8.dp,
+                                start  = 12.dp,
+                                end    = 12.dp,
+                                top    = if (message.replyTo != null) 2.dp else if (isDeleted) 10.dp else 8.dp,
+                                bottom = if (isDeleted) 10.dp else 8.dp,
                             ),
                         ) {
                             // Pin badge
@@ -219,21 +256,23 @@ fun MessageBubble(
                                         else   -> textMuted
                                     }
                                 }
-                                val trailingSpacer = if (canPeek) "  edited  $timeText" else "  $timeText"
 
+                                // P2 fix: was AnnotatedString with a transparent trailing spacer to
+                                // push text above the timestamp — this forces text to re-layout every
+                                // recomposition and can't be cached.
+                                // Now: plain Text + a Box overlay for the timestamp row.
+                                // The timestamp is a separate draw call that doesn't affect text layout.
                                 Box {
+                                    // Message text — padding-bottom reserves space for timestamp
                                     Text(
-                                        text  = buildAnnotatedString {
-                                            append(displayText)
-                                            withStyle(SpanStyle(color = Color.Transparent)) {
-                                                append(trailingSpacer)
-                                            }
-                                        },
-                                        style    = MaterialTheme.typography.bodyLarge.copy(
+                                        text  = displayText,
+                                        style = MaterialTheme.typography.bodyLarge.copy(
                                             color = if (isOwn) Color.White else AppTheme.colors.textPrimary,
                                         ),
-                                        modifier = Modifier.padding(bottom = 4.dp),
+                                        modifier = Modifier.padding(bottom = 18.dp),
                                     )
+
+                                    // Timestamp row — overlaid at bottom-end, no text layout impact
                                     Row(
                                         modifier              = Modifier
                                             .align(Alignment.BottomEnd)
@@ -250,13 +289,12 @@ fun MessageBubble(
                                                     textDecoration = TextDecoration.Underline,
                                                 ),
                                                 modifier = Modifier.pointerInput(Unit) {
-                                                    detectTapGestures(
-                                                        onPress = {
-                                                            peekOriginal = true
-                                                            tryAwaitRelease()
-                                                            peekOriginal = false
-                                                        }
-                                                    )
+                                                    awaitEachGesture {
+                                                        awaitFirstDown()
+                                                        peekOriginal = true
+                                                        waitForUpOrCancellation()
+                                                        peekOriginal = false
+                                                    }
                                                 },
                                             )
                                         }

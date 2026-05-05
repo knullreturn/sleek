@@ -58,7 +58,8 @@ fun ChatScreen(
     // Mark seen when the last peer message changes
     // Fix: only mark seen if message is actually visible in the list
     // Previously fired immediately on message arrival regardless of scroll position
-    val lastPeerMsgId = state.messages.lastOrNull { it.senderId != myId }?.id
+    // P1: DESC order — newest first, so firstOrNull is the most recent peer message
+    val lastPeerMsgId = state.messages.firstOrNull { it.senderId != myId }?.id
     LaunchedEffect(lastPeerMsgId) {
         if (lastPeerMsgId == null) return@LaunchedEffect
         // Wait for layout to settle, then check visibility
@@ -103,9 +104,7 @@ fun ChatScreen(
     // Pre-computed in ViewModel on Dispatchers.Default — zero UI thread cost
     val grouped        = state.grouped
     val peerHasReplied = state.peerHasReplied
-    val lastListIndex  = remember(grouped, showTyping) {
-        maxOf(0, chatLazyItemCount(grouped, hasTyping = showTyping) - 1)
-    }
+    // P1: with reverseLayout index 0 = bottom — no lastListIndex needed
 
     // ── Content sequencing — slide in page first, THEN render messages ────────
     // Without this, the page slide animation and full LazyColumn composition
@@ -118,59 +117,48 @@ fun ChatScreen(
 
     // ── Scroll logic ──────────────────────────────────────────────────────────
 
-    // Initial load — restore saved position or jump to bottom
+    // Initial load — restore saved position or jump to bottom (index 0 = bottom with reverseLayout)
     LaunchedEffect(contentVisible, state.messages.isNotEmpty()) {
         if (contentVisible && state.messages.isNotEmpty()) {
             if (savedScroll != null) {
                 listState.scrollToItem(
-                    index        = savedScroll.first.coerceAtMost(lastListIndex),
+                    index        = savedScroll.first,
                     scrollOffset = savedScroll.second,
                 )
             } else {
-                listState.scrollToItem(lastListIndex)
+                listState.scrollToItem(0)  // P1: 0 = bottom
             }
         }
     }
 
-    // New message — only animate if near bottom OR it's the user's own message
+    // New message — scroll to bottom if near bottom or own message
+    // P1: DESC order → newest = first; near bottom = firstVisibleItemIndex near 0
     LaunchedEffect(state.messages.size) {
         if (!contentVisible) return@LaunchedEffect
         val msgs = state.messages
         if (msgs.isEmpty()) return@LaunchedEffect
-        val lastMsg      = msgs.last()
-        val totalItems   = listState.layoutInfo.totalItemsCount
-        val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        val isNearBottom = lastVisible >= totalItems - 5
-        val isMine       = lastMsg.senderId == myId
+        val newestMsg    = msgs.first()
+        val isNearBottom = listState.firstVisibleItemIndex <= 5
+        val isMine       = newestMsg.senderId == myId
         if (isMine || isNearBottom)
-            listState.scrollToChatItem(maxOf(0, totalItems - 1))
+            listState.scrollToItem(0)  // P1: 0 = bottom
     }
 
-    // Keyboard open → scroll list to stay at bottom so messages aren't hidden.
-    // Fix: the previous version used delay(50) + animateScrollToItem which created a
-    // double-movement jump (layout resized AND animated scroll fought each other).
-    // Instant scrollToItem with no delay fires in sync with the resize — one clean movement.
-    // Guard: only scroll if user is already near the bottom (don't yank them away from history).
+    // Keyboard open → stay at bottom. P1: bottom = index 0.
     val density   = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
-            val totalItems   = listState.layoutInfo.totalItemsCount
-            val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val isNearBottom = lastVisible >= totalItems - 6
-            if (isNearBottom) {
-                listState.scrollToItem(lastListIndex)  // instant — no animation, no jump
+            if (listState.firstVisibleItemIndex <= 6) {
+                listState.scrollToItem(0)  // P1: instant, no jump
             }
         }
     }
 
-    // Typing indicator → scroll to show it
+    // Typing indicator → scroll to show it (index 0 = bottom with reverseLayout)
     LaunchedEffect(showTyping) {
-        if (showTyping) {
-            val totalItems   = listState.layoutInfo.totalItemsCount
-            val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val isNearBottom = lastVisible >= totalItems - 5
-            if (isNearBottom) listState.scrollToChatItem(lastListIndex)
+        if (showTyping && listState.firstVisibleItemIndex <= 5) {
+            listState.scrollToItem(0)
         }
     }
 
