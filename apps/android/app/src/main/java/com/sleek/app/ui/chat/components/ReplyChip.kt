@@ -71,7 +71,7 @@ fun ReplyChip(
             Text(
                 text     = if (isDeleted) "Message deleted" else replyTo.content,
                 style    = MaterialTheme.typography.bodySmall.copy(
-                    color    = if (isOwn) TextPrimary.copy(alpha = 0.7f) else TextSecondary,
+                    color    = if (isOwn) Color.White.copy(alpha = 0.7f) else AppTheme.colors.textSecondary,
                     fontSize = 12.sp,
                 ),
                 maxLines = 1,

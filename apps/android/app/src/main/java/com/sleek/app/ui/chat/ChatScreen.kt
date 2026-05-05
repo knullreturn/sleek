@@ -152,15 +152,15 @@ fun ChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextSecondary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppTheme.colors.textSecondary)
                     }
                 },
                 actions = {
                     IconButton(onClick = { /* TODO: in-chat search */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search", tint = TextSecondary)
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = AppTheme.colors.textSecondary)
                     }
                     IconButton(onClick = { /* TODO: pinned messages */ }) {
-                        Icon(Icons.Default.PushPin, contentDescription = "Pins", tint = TextSecondary)
+                        Icon(Icons.Default.PushPin, contentDescription = "Pins", tint = AppTheme.colors.textSecondary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

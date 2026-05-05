@@ -48,7 +48,7 @@ fun MessageContextMenu(
                     modifier      = Modifier.fillMaxWidth(),
                     colors        = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor   = Accent,
-                        unfocusedBorderColor = BorderMid,
+                        unfocusedBorderColor = AppTheme.colors.borderMid,
                         focusedTextColor     = TextPrimary,
                         unfocusedTextColor   = TextPrimary,
                         cursorColor          = Accent,
@@ -66,7 +66,7 @@ fun MessageContextMenu(
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = AppTheme.colors.textSecondary)
                 }
             },
         )
@@ -90,7 +90,7 @@ fun MessageContextMenu(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = AppTheme.colors.textSecondary)
                 }
             },
         )
@@ -106,7 +106,7 @@ fun MessageContextMenu(
                     .padding(vertical = 10.dp)
                     .size(width = 36.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(BorderMid),
+                    .background(AppTheme.colors.borderMid),
             )
         },
     ) {
@@ -137,14 +137,14 @@ fun MessageContextMenu(
                     )
                     Text(
                         text     = message.content,
-                        style    = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary),
+                        style    = MaterialTheme.typography.bodyMedium.copy(color = AppTheme.colors.textSecondary),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = AppTheme.colors.borderSubtle, modifier = Modifier.padding(vertical = 8.dp))
 
             // ── Action rows ───────────────────────────────────────────────────
             ContextMenuItem(
@@ -170,7 +170,7 @@ fun MessageContextMenu(
             ContextMenuItem(
                 icon  = if (message.pinned) Icons.Default.PushPin else Icons.Default.PushPin,
                 label = if (message.pinned) "Unpin" else "Pin",
-                tint  = if (message.pinned) Accent else TextPrimary,
+                tint  = if (message.pinned) Accent else Color.White,
                 onClick = {
                     if (message.pinned) onUnpin() else onPin()
                     onDismiss()

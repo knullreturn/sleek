@@ -53,7 +53,7 @@ internal fun ChatInputBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Surface)
+                        .background(AppTheme.colors.surface)
                         .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -64,7 +64,7 @@ internal fun ChatInputBar(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceHigh),
+                            .background(AppTheme.colors.surfaceHigh),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(modifier = Modifier.width(3.dp).height(44.dp).background(Accent))
@@ -76,7 +76,7 @@ internal fun ChatInputBar(
                             Spacer(Modifier.height(1.dp))
                             Text(
                                 text     = msg.content,
-                                style    = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                                style    = MaterialTheme.typography.bodySmall.copy(color = AppTheme.colors.textSecondary),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -84,7 +84,7 @@ internal fun ChatInputBar(
                     }
 
                     IconButton(onClick = onCancelReply) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel reply", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Cancel reply", tint = AppTheme.colors.textSecondary, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -94,7 +94,7 @@ internal fun ChatInputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Surface)
+                .background(AppTheme.colors.surface)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .navigationBarsPadding()
                 .imePadding(),
@@ -121,15 +121,15 @@ internal fun ChatInputBar(
                                 .clickable(onClick = onSend),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = TextPrimary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = AppTheme.colors.textPrimary, modifier = Modifier.size(16.dp))
                         }
                     }
                 },
                 singleLine = false,
                 maxLines   = 5,
                 colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = SurfaceHigh,
-                    unfocusedContainerColor = SurfaceHigh,
+                    focusedContainerColor   = AppTheme.colors.surfaceHigh,
+                    unfocusedContainerColor = AppTheme.colors.surfaceHigh,
                     focusedTextColor        = TextPrimary,
                     unfocusedTextColor      = TextPrimary,
                     cursorColor             = Accent,

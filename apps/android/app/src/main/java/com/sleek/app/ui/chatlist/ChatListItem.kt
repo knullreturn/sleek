@@ -68,7 +68,7 @@ internal fun ChatListItem(
                 Text(
                     text     = peer?.username ?: "Unknown",
                     style    = if (hasUnread)
-                                   MaterialTheme.typography.titleMedium.copy(color = TextPrimary)
+                                   MaterialTheme.typography.titleMedium.copy(color = AppTheme.colors.textPrimary)
                                else MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -81,7 +81,7 @@ internal fun ChatListItem(
                     Text(
                         text     = chat.lastMessage?.createdAt?.let { formatChatTime(it) } ?: "",
                         style    = MaterialTheme.typography.labelSmall.copy(
-                            color = if (hasUnread) Accent else TextMuted,
+                            color = if (hasUnread) Accent else AppTheme.colors.textMuted,
                         ),
                         modifier = Modifier.padding(start = 8.dp),
                     )
@@ -110,7 +110,7 @@ internal fun ChatListItem(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment     = Alignment.CenterVertically,
             ) {
-                if (isLastMsgOwn) Text("You: ", style = MaterialTheme.typography.bodyMedium.copy(color = TextMuted))
+                if (isLastMsgOwn) Text("You: ", style = MaterialTheme.typography.bodyMedium.copy(color = AppTheme.colors.textMuted))
                 Text(
                     text     = when {
                         chat.lastMessage == null           -> "No messages yet"
@@ -122,8 +122,8 @@ internal fun ChatListItem(
                     overflow = TextOverflow.Ellipsis,
                     color    = when {
                         hasUnread                            -> Accent       // purple for unread
-                        chat.lastMessage?.deletedAt != null -> TextMuted
-                        else                                 -> TextSecondary
+                        chat.lastMessage?.deletedAt != null -> AppTheme.colors.textMuted
+                        else                                 -> AppTheme.colors.textSecondary
                     },
                 )
             }
@@ -138,10 +138,10 @@ internal fun ChatItemSkeleton() {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment     = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(SurfaceHigh))
+        Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(AppTheme.colors.surfaceHigh))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.fillMaxWidth(0.4f).height(14.dp).background(SurfaceHigh, RoundedCornerShape(4.dp)))
-            Box(Modifier.fillMaxWidth(0.7f).height(12.dp).background(SurfaceHigh, RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.4f).height(14.dp).background(AppTheme.colors.surfaceHigh, RoundedCornerShape(4.dp)))
+            Box(Modifier.fillMaxWidth(0.7f).height(12.dp).background(AppTheme.colors.surfaceHigh, RoundedCornerShape(4.dp)))
         }
     }
 }

@@ -50,7 +50,7 @@ fun ChatListScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Black)) {
+    Column(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
 
         // ── Header ────────────────────────────────────────────────────────────
         Row(
@@ -108,16 +108,16 @@ fun ChatListScreen(
                 onValueChange = { viewModel.setSearchQuery(it) },
                 modifier      = Modifier.weight(1f),
                 placeholder   = { Text("Search conversations…", style = MaterialTheme.typography.bodySmall) },
-                leadingIcon   = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(17.dp)) },
+                leadingIcon   = { Icon(Icons.Default.Search, contentDescription = null, tint = AppTheme.colors.textSecondary, modifier = Modifier.size(17.dp)) },
                 trailingIcon  = if (searchQuery.isNotBlank()) {{
                     IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary, modifier = Modifier.size(15.dp))
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = AppTheme.colors.textSecondary, modifier = Modifier.size(15.dp))
                     }
                 }} else null,
                 singleLine = true,
                 colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = SurfaceHigh,
-                    unfocusedContainerColor = SurfaceHigh,
+                    focusedContainerColor   = AppTheme.colors.surfaceHigh,
+                    unfocusedContainerColor = AppTheme.colors.surfaceHigh,
                     focusedTextColor        = TextPrimary,
                     unfocusedTextColor      = TextPrimary,
                     cursorColor             = Accent,
@@ -159,7 +159,7 @@ fun ChatListScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(52.dp))
+                    Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = AppTheme.colors.textSecondary, modifier = Modifier.size(52.dp))
                     Text(
                         text  = if (searchQuery.isBlank()) "No conversations yet" else "No results for \"$searchQuery\"",
                         style = MaterialTheme.typography.titleMedium,
@@ -187,7 +187,7 @@ fun ChatListScreen(
                                 onOpenChat(chat.id, peer?.username ?: "Chat")
                             },
                         )
-                        HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp, modifier = Modifier.padding(start = 76.dp))
+                        HorizontalDivider(color = AppTheme.colors.borderSubtle, thickness = 0.5.dp, modifier = Modifier.padding(start = 76.dp))
                     }
                 }
             }

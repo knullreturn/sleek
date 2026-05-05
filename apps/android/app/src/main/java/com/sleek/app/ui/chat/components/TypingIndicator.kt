@@ -35,7 +35,7 @@ fun TypingIndicator(
         Box(
             modifier = Modifier
                 .clip(BubbleShapeOther)
-                .background(BubbleOther)
+                .background(AppTheme.colors.bubbleOther)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
             Row(
@@ -66,6 +66,6 @@ private fun BouncingDot(delayMillis: Int) {
             .size(7.dp)
             .scale(scale)
             .clip(CircleShape)
-            .background(TextSecondary),
+            .background(AppTheme.colors.textSecondary),
     )
 }

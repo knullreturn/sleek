@@ -43,7 +43,7 @@ internal fun NewDmSheet(
                     .padding(vertical = 12.dp)
                     .size(width = 36.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(BorderMid),
+                    .background(AppTheme.colors.borderMid),
             )
         },
     ) {
@@ -65,12 +65,12 @@ internal fun NewDmSheet(
                     if (dmSearching)
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Accent)
                     else
-                        Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Search, contentDescription = null, tint = AppTheme.colors.textSecondary, modifier = Modifier.size(18.dp))
                 },
                 singleLine = true,
                 colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = SurfaceHigh,
-                    unfocusedContainerColor = SurfaceHigh,
+                    focusedContainerColor   = AppTheme.colors.surfaceHigh,
+                    unfocusedContainerColor = AppTheme.colors.surfaceHigh,
                     focusedTextColor        = TextPrimary,
                     unfocusedTextColor      = TextPrimary,
                     cursorColor             = Accent,
@@ -143,6 +143,6 @@ private fun UserSearchItem(user: User, onClick: () -> Unit) {
             Text(text = user.username ?: "Unknown", style = MaterialTheme.typography.titleMedium)
             Text(text = "#${user.tag}", style = MaterialTheme.typography.labelSmall)
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextSecondary)
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = AppTheme.colors.textSecondary)
     }
 }

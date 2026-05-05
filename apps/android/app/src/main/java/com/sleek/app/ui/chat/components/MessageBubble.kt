@@ -80,7 +80,7 @@ fun MessageBubble(
             Box(
                 modifier = Modifier
                     .clip(if (isOwn) BubbleShapeOwn else BubbleShapeOther)
-                    .background(if (isOwn) BubbleOwn else BubbleOther)
+                    .background(if (isOwn) BubbleOwn else AppTheme.colors.bubbleOther)
                     .pointerInput(message.id) {
                         detectTapGestures(onLongPress = { onLongPress(message) })
                     },
@@ -121,7 +121,7 @@ fun MessageBubble(
                             Icon(
                                 imageVector        = Icons.Default.PushPin,
                                 contentDescription = "Pinned",
-                                tint               = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                                tint               = if (isOwn) Color.White.copy(alpha = 0.6f) else AppTheme.colors.textSecondary,
                                 modifier           = Modifier
                                     .size(11.dp)
                                     .align(Alignment.TopEnd)
@@ -133,7 +133,7 @@ fun MessageBubble(
                             Text(
                                 text  = "🗑  This message was deleted",
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    color     = if (isOwn) TextPrimary.copy(alpha = 0.5f) else TextSecondary,
+                                    color     = if (isOwn) Color.White.copy(alpha = 0.5f) else AppTheme.colors.textSecondary,
                                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                     fontSize  = 13.sp,
                                 ),
@@ -142,8 +142,8 @@ fun MessageBubble(
                             val timeStr   = formatBubbleTime(message.createdAt)
                             val timeColor by animateColorAsState(
                                 targetValue   = if (isSeen) SeenGreen
-                                                else if (isOwn) TextPrimary.copy(alpha = 0.45f)
-                                                else TextMuted,
+                                                else if (isOwn) Color.White.copy(alpha = 0.45f)
+                                                else AppTheme.colors.textMuted,
                                 animationSpec = tween(500),
                                 label         = "seen_color",
                             )
@@ -171,7 +171,7 @@ fun MessageBubble(
                                         Text(
                                             text  = if (peekOriginal) "original" else "edited",
                                             style = MaterialTheme.typography.labelSmall.copy(
-                                                color          = if (isOwn) TextPrimary.copy(alpha = 0.6f) else TextSecondary,
+                                                color          = if (isOwn) Color.White.copy(alpha = 0.6f) else AppTheme.colors.textSecondary,
                                                 fontStyle      = androidx.compose.ui.text.font.FontStyle.Italic,
                                                 textDecoration = TextDecoration.Underline,
                                             ),

@@ -47,7 +47,7 @@ internal fun MessageList(
                         modifier = Modifier
                             .fillMaxWidth(if (isOwn) 0.55f else 0.5f)
                             .height(42.dp)
-                            .background(SurfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther),
+                            .background(AppTheme.colors.surfaceHigh, if (isOwn) BubbleShapeOwn else BubbleShapeOther),
                     )
                 }
             }
@@ -69,7 +69,7 @@ internal fun MessageList(
                 ) {
                     Box(
                         modifier = Modifier
-                            .background(SurfaceMid, MaterialTheme.shapes.small)
+                            .background(AppTheme.colors.surfaceMid, MaterialTheme.shapes.small)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(dateLabel, style = MaterialTheme.typography.labelSmall)

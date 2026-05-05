@@ -41,7 +41,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Black),
+            .background(AppTheme.colors.background),
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -127,7 +127,7 @@ fun LoginScreen(
 
             Text(
                 text  = "By continuing you agree to our Terms of Service",
-                style = MaterialTheme.typography.labelSmall.copy(color = TextMuted),
+                style = MaterialTheme.typography.labelSmall.copy(color = AppTheme.colors.textMuted),
                 textAlign = TextAlign.Center,
             )
         }
@@ -150,7 +150,7 @@ fun OnboardingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Black)
+            .background(AppTheme.colors.background)
             .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -193,7 +193,7 @@ fun OnboardingScreen(
                 shape    = RoundedCornerShape(12.dp),
             ) {
                 if (state is AuthUiState.Loading) {
-                    CircularProgressIndicator(color = TextPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(color = AppTheme.colors.textPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
                     Text("Get Started →", style = MaterialTheme.typography.titleMedium)
                 }
@@ -230,9 +230,9 @@ fun SleekTextField(
         keyboardActions   = keyboardActions,
         colors            = OutlinedTextFieldDefaults.colors(
             focusedBorderColor   = Accent,
-            unfocusedBorderColor = BorderSubtle,
+            unfocusedBorderColor = AppTheme.colors.borderSubtle,
             focusedLabelColor    = Accent,
-            unfocusedLabelColor  = TextSecondary,
+            unfocusedLabelColor  = AppTheme.colors.textSecondary,
             cursorColor          = Accent,
             focusedTextColor     = TextPrimary,
             unfocusedTextColor   = TextPrimary,

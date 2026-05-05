@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 private val SleekDarkColorScheme = darkColorScheme(
@@ -42,10 +43,12 @@ private val SleekLightColorScheme = lightColorScheme(
 
 @Composable
 fun SleekTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) SleekDarkColorScheme else SleekLightColorScheme,
-        typography  = SleekTypography,
-        shapes      = SleekShapes,
-        content     = content,
-    )
+    CompositionLocalProvider(LocalAppColors provides if (darkTheme) darkAppColors else lightAppColors) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) SleekDarkColorScheme else SleekLightColorScheme,
+            typography  = SleekTypography,
+            shapes      = SleekShapes,
+            content     = content,
+        )
+    }
 }
