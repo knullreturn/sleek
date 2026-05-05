@@ -234,8 +234,8 @@ fun SleekTextField(
             focusedLabelColor    = Accent,
             unfocusedLabelColor  = AppTheme.colors.textSecondary,
             cursorColor          = Accent,
-            focusedTextColor     = TextPrimary,
-            unfocusedTextColor   = TextPrimary,
+            focusedTextColor     = AppTheme.colors.textPrimary,
+            unfocusedTextColor   = AppTheme.colors.textPrimary,
         ),
         shape = MaterialTheme.shapes.medium,
     )

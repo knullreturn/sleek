@@ -99,7 +99,7 @@ internal fun ChatListItem(
                             Text(
                                 text  = if (unreadCount > 99) "99+" else unreadCount.toString(),
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color    = TextPrimary,
+                                    color    = AppTheme.colors.textPrimary,
                                     fontSize = 10.sp,
                                 ),
                             )

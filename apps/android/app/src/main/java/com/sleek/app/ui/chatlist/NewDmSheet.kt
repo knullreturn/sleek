@@ -36,7 +36,7 @@ internal fun NewDmSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor   = Surface,
+        containerColor   = AppTheme.colors.surface,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -69,13 +69,19 @@ internal fun NewDmSheet(
                 },
                 singleLine = true,
                 colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = AppTheme.colors.surfaceHigh,
-                    unfocusedContainerColor = AppTheme.colors.surfaceHigh,
-                    focusedTextColor        = TextPrimary,
-                    unfocusedTextColor      = TextPrimary,
-                    cursorColor             = Accent,
-                    focusedIndicatorColor   = androidx.compose.ui.graphics.Color.Transparent,
-                    unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedContainerColor      = AppTheme.colors.surfaceHigh,
+                    unfocusedContainerColor    = AppTheme.colors.surfaceHigh,
+                    focusedTextColor           = AppTheme.colors.textPrimary,
+                    unfocusedTextColor         = AppTheme.colors.textPrimary,
+                    cursorColor                = Accent,
+                    focusedIndicatorColor      = androidx.compose.ui.graphics.Color.Transparent,
+                    unfocusedIndicatorColor    = androidx.compose.ui.graphics.Color.Transparent,
+                    focusedPlaceholderColor    = AppTheme.colors.textMuted,
+                    unfocusedPlaceholderColor  = AppTheme.colors.textMuted,
+                    selectionColors            = TextSelectionColors(
+                        handleColor     = Accent,
+                        backgroundColor = Accent.copy(alpha = 0.25f),
+                    ),
                 ),
                 shape = RoundedCornerShape(12.dp),
             )
@@ -140,8 +146,14 @@ private fun UserSearchItem(user: User, onClick: () -> Unit) {
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = user.username ?: "Unknown", style = MaterialTheme.typography.titleMedium)
-            Text(text = "#${user.tag}", style = MaterialTheme.typography.labelSmall)
+            Text(
+                text  = user.username ?: "Unknown",
+                style = MaterialTheme.typography.titleMedium.copy(color = AppTheme.colors.textPrimary),
+            )
+            Text(
+                text  = "#${user.tag}",
+                style = MaterialTheme.typography.labelSmall.copy(color = AppTheme.colors.textSecondary),
+            )
         }
         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = AppTheme.colors.textSecondary)
     }

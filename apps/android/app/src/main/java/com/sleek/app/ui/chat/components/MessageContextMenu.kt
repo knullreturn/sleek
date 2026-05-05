@@ -39,7 +39,7 @@ fun MessageContextMenu(
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            containerColor   = Surface,
+            containerColor   = AppTheme.colors.surface,
             title            = { Text("Edit message", style = MaterialTheme.typography.titleMedium) },
             text             = {
                 OutlinedTextField(
@@ -49,8 +49,8 @@ fun MessageContextMenu(
                     colors        = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor   = Accent,
                         unfocusedBorderColor = AppTheme.colors.borderMid,
-                        focusedTextColor     = TextPrimary,
-                        unfocusedTextColor   = TextPrimary,
+                        focusedTextColor     = AppTheme.colors.textPrimary,
+                        unfocusedTextColor   = AppTheme.colors.textPrimary,
                         cursorColor          = Accent,
                     ),
                 )
@@ -76,7 +76,7 @@ fun MessageContextMenu(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            containerColor   = Surface,
+            containerColor   = AppTheme.colors.surface,
             title            = { Text("Delete message", style = MaterialTheme.typography.titleMedium) },
             text             = { Text("This message will be deleted for everyone.", style = MaterialTheme.typography.bodyMedium) },
             confirmButton    = {
@@ -99,7 +99,7 @@ fun MessageContextMenu(
     // ── Bottom sheet ──────────────────────────────────────────────────────────
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor   = Surface,
+        containerColor   = AppTheme.colors.surface,
         dragHandle       = {
             Box(
                 modifier = Modifier
@@ -150,20 +150,20 @@ fun MessageContextMenu(
             ContextMenuItem(
                 icon  = Icons.Default.ContentCopy,
                 label = "Copy",
-                tint  = TextPrimary,
+                tint  = AppTheme.colors.textPrimary,
                 onClick = { onCopy(); onDismiss() },
             )
             ContextMenuItem(
                 icon  = Icons.Default.Reply,
                 label = "Reply",
-                tint  = TextPrimary,
+                tint  = AppTheme.colors.textPrimary,
                 onClick = { onReply(); onDismiss() },
             )
             if (isOwn) {
                 ContextMenuItem(
                     icon  = Icons.Default.Edit,
                     label = "Edit",
-                    tint  = TextPrimary,
+                    tint  = AppTheme.colors.textPrimary,
                     onClick = { showEditDialog = true },
                 )
             }

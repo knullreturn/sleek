@@ -121,20 +121,26 @@ internal fun ChatInputBar(
                                 .clickable(onClick = onSend),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = AppTheme.colors.textPrimary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(16.dp))
                         }
                     }
                 },
                 singleLine = false,
                 maxLines   = 5,
                 colors     = TextFieldDefaults.colors(
-                    focusedContainerColor   = AppTheme.colors.surfaceHigh,
-                    unfocusedContainerColor = AppTheme.colors.surfaceHigh,
-                    focusedTextColor        = TextPrimary,
-                    unfocusedTextColor      = TextPrimary,
-                    cursorColor             = Accent,
-                    focusedIndicatorColor   = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedContainerColor      = AppTheme.colors.surfaceHigh,
+                    unfocusedContainerColor    = AppTheme.colors.surfaceHigh,
+                    focusedTextColor           = AppTheme.colors.textPrimary,
+                    unfocusedTextColor         = AppTheme.colors.textPrimary,
+                    cursorColor                = Accent,
+                    focusedIndicatorColor      = Color.Transparent,
+                    unfocusedIndicatorColor    = Color.Transparent,
+                    focusedPlaceholderColor    = AppTheme.colors.textMuted,
+                    unfocusedPlaceholderColor  = AppTheme.colors.textMuted,
+                    selectionColors            = TextSelectionColors(
+                        handleColor           = Accent,
+                        backgroundColor       = Accent.copy(alpha = 0.25f),
+                    ),
                 ),
                 shape = RoundedCornerShape(28.dp),
             )

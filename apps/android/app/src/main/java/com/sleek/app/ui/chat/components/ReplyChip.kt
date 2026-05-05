@@ -34,8 +34,10 @@ fun ReplyChip(
     // Subtle tinted background — contrasts with the bubble without clashing
     val bgColor = if (isOwn)
         Color.White.copy(alpha = 0.13f)
+    else if (AppTheme.colors.isDark)
+        Color.White.copy(alpha = 0.08f)   // dark mode: lighten on dark bubble
     else
-        Color.Black.copy(alpha = 0.12f)
+        Color.Black.copy(alpha = 0.07f)   // light mode: darken slightly on pink bubble
 
     Row(
         modifier = modifier
