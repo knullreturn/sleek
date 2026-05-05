@@ -101,13 +101,14 @@ internal fun MessageList(
     }
 
     // ── Auto-load older messages when scrolled to the top (= end of reversed list) ──
-    // With reverseLayout, "end" = largest index = oldest messages = top of screen.
-    // We trigger load when the last visible item is within 5 items of the list end.
-    val totalItems = chatLazyItemCount(grouped, hasTyping = typingUsers.isNotEmpty())
     LaunchedEffect(listState, hasMoreMessages) {
         snapshotFlow {
-            val last = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            last >= totalItems - 5
+            // Read totalItems INSIDE snapshotFlow so it updates reactively
+            val total = grouped.groups.sumOf { 1 + it.rows.size } +
+                if (typingUsers.isNotEmpty()) 1 else 0
+            val last  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            // Guard: only trigger when list has items AND we're near the end (top visually)
+            total > 0 && last >= total - 5
         }.collect { nearEnd ->
             if (nearEnd && hasMoreMessages && !isLoadingOlder) {
                 onLoadOlder()
