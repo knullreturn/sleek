@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
+import { useUIStore } from '../store/ui.store';
 
 let socket: Socket | null = null;
 
@@ -23,8 +24,6 @@ export function useSocket() {
     socket = io(API_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
-      // Fix: was 5 — socket died permanently after 5 failures.
-      // Infinity = reconnects forever with exponential back-off.
       reconnectionAttempts: Infinity,
       reconnectionDelay:    1000,
       reconnectionDelayMax: 30000,
@@ -34,6 +33,12 @@ export function useSocket() {
       console.log('🔌 Socket connected');
       if (activeChatRef.current) {
         socket?.emit('join_chat', activeChatRef.current);
+      }
+      // Re-sync sleep mode — server's in-memory state resets on reconnect,
+      // so we push the locally-persisted preference on every connect.
+      const sleeping = localStorage.getItem('sleek-sleep-mode') === 'true';
+      if (sleeping) {
+        socket?.emit('set_sleep_mode', { enabled: true });
       }
     });
 
