@@ -76,16 +76,17 @@ internal fun MessageList(
     }
 
 
-    LaunchedEffect(listState, hasMoreMessages) {
+    // totalItems is plain data (not snapshot state) — compute once outside snapshotFlow
+    // so the sumOf doesn't run on every scroll frame.
+    val totalItems = remember(grouped, typingUsers.isNotEmpty()) {
+        grouped.groups.sumOf { 1 + it.rows.size } + if (typingUsers.isNotEmpty()) 1 else 0
+    }
+    LaunchedEffect(listState, hasMoreMessages, totalItems) {
         snapshotFlow {
-            // Read totalItems INSIDE snapshotFlow so it updates reactively
-            val total = grouped.groups.sumOf { 1 + it.rows.size } +
-                if (typingUsers.isNotEmpty()) 1 else 0
-            val last  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            // Guard: only trigger when list has items AND we're near the end (top visually)
-            total > 0 && last >= total - 5
-        }.collect { nearEnd ->
-            if (nearEnd && hasMoreMessages && !isLoadingOlder) {
+            // Only layoutInfo is reactive snapshot state — read it here
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        }.collect { lastIdx ->
+            if (totalItems > 0 && lastIdx >= totalItems - 5 && hasMoreMessages && !isLoadingOlder) {
                 onLoadOlder()
             }
         }
