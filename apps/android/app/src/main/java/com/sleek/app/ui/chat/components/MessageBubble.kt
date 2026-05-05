@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -89,7 +90,7 @@ fun MessageBubble(
     // measure pass inside the LazyColumn item scope.
     Box(
         modifier = modifier
-            .fillParentMaxWidth()
+            .fillMaxWidth()
             .pointerInput(message.id) {
                 // Only one detector per bubble. No draggable wrapper, no extra modifier chain.
                 // awaitEachGesture restarts for each new pointer sequence automatically.
@@ -155,7 +156,7 @@ fun MessageBubble(
         // offset runs on the draw thread with no layer allocation when value = 0.
         Row(
             modifier = Modifier
-                .fillParentMaxWidth()
+                .fillMaxWidth()
                 .offset { IntOffset(swipeOffset.roundToInt(), 0) }
                 .padding(
                     start  = if (isOwn) 64.dp else 8.dp,
@@ -181,16 +182,7 @@ fun MessageBubble(
                             shape = if (isOwn) shapeOwn  else shapeOther,
                         )
                         .pointerInput(message.id) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown()
-                                val up   = waitForUpOrCancellation()
-                                if (up != null) {
-                                    // tap — handled by gesture detector above
-                                } else {
-                                    // long press
-                                    onLongPress(message)
-                                }
-                            }
+                            detectTapGestures(onLongPress = { onLongPress(message) })
                         },
                 ) {
                     // Highlight overlay
@@ -292,7 +284,10 @@ fun MessageBubble(
                                                     awaitEachGesture {
                                                         awaitFirstDown()
                                                         peekOriginal = true
-                                                        waitForUpOrCancellation()
+                                                        // wait until all pointers are lifted
+                                                        do {
+                                                            val evt = awaitPointerEvent()
+                                                        } while (evt.changes.any { it.pressed })
                                                         peekOriginal = false
                                                     }
                                                 },
