@@ -149,12 +149,11 @@ internal fun MessageList(
         },
     ) {
         LazyColumn(
-            state                = listState,
-            modifier             = Modifier
+            state          = listState,
+            modifier       = Modifier
                 .fillMaxSize()
                 .graphicsLayer { translationY = overscrollOffset.value },
-            contentPadding       = PaddingValues(vertical = 8.dp),
-            beyondBoundsItemCount = 2,  // pre-render 2 items past viewport edges
+            contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             grouped.forEach { (dateLabel, msgs) ->
                 // Date separator
