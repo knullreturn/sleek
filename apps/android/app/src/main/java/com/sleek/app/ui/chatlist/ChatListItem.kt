@@ -67,9 +67,11 @@ internal fun ChatListItem(
             ) {
                 Text(
                     text     = peer?.username ?: "Unknown",
-                    style    = if (hasUnread)
-                                   MaterialTheme.typography.titleMedium.copy(color = AppTheme.colors.textPrimary)
-                               else MaterialTheme.typography.titleMedium,
+                    style    = MaterialTheme.typography.titleMedium.copy(
+                        color      = AppTheme.colors.textPrimary,
+                        fontWeight = if (hasUnread) androidx.compose.ui.text.font.FontWeight.Bold
+                                     else androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),

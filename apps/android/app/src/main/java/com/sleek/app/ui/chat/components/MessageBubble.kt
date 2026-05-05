@@ -157,7 +157,9 @@ fun MessageBubble(
                                             append(trailingSpacer)
                                         }
                                     },
-                                    style    = MaterialTheme.typography.bodyLarge,
+                                    style    = MaterialTheme.typography.bodyLarge.copy(
+                                        color = if (isOwn) Color.White else AppTheme.colors.textPrimary,
+                                    ),
                                     modifier = Modifier.padding(bottom = 4.dp),
                                 )
                                 Row(

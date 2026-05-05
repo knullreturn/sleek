@@ -29,7 +29,7 @@ val LightSurfaceHigh = Color(0xFFEEEEF4)
 val LightSurfaceMid  = Color(0xFFF2F2F7)
 
 // ── Light Theme Bubbles ───────────────────────────────────────────────────────
-val LightBubbleOther = Color(0xFFECECF5)
+val LightBubbleOther = Color(0xFFFFE4EE)   // soft pink — clearly visible on white bg
 
 // ── Light Theme Text ──────────────────────────────────────────────────────────
 val LightTextPrimary   = Color(0xFF0F0F10)

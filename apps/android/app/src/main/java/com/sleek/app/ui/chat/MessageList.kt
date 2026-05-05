@@ -72,7 +72,12 @@ internal fun MessageList(
                             .background(AppTheme.colors.surfaceMid, MaterialTheme.shapes.small)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
-                        Text(dateLabel, style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text  = dateLabel,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = AppTheme.colors.textSecondary,
+                            ),
+                        )
                     }
                 }
             }
