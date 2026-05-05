@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.sleek.app.R
 import com.sleek.app.ui.theme.*
+import androidx.compose.foundation.text.selection.TextSelectionColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

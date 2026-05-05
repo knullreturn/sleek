@@ -21,52 +21,57 @@ import com.sleek.app.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageContextMenu(
-    message:    Message,
-    isOwn:      Boolean,
-    onDismiss:  () -> Unit,
-    onCopy:     () -> Unit,
-    onReply:    () -> Unit,
-    onEdit:     (String) -> Unit,   // new content
-    onPin:      () -> Unit,
-    onUnpin:    () -> Unit,
-    onDelete:   () -> Unit,
+    message:   Message,
+    isOwn:     Boolean,
+    onDismiss: () -> Unit,
+    onCopy:    () -> Unit,
+    onReply:   () -> Unit,
+    onEdit:    (String) -> Unit,
+    onPin:     () -> Unit,
+    onUnpin:   () -> Unit,
+    onDelete:  () -> Unit,
 ) {
-    var showEditDialog by remember { mutableStateOf(false) }
+    // Capture colors in main composition — safe across popup/dialog boundaries
+    val c = AppTheme.colors
+
+    // MaterialTheme.colorScheme is guaranteed to propagate through ModalBottomSheet/AlertDialog
+    val sheetBg  = MaterialTheme.colorScheme.surface
+    val onSurface = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVar = MaterialTheme.colorScheme.onSurfaceVariant
+    val outlineColor = MaterialTheme.colorScheme.outline
+
+    var showEditDialog   by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var editText by remember { mutableStateOf(message.content) }
+    var editText         by remember { mutableStateOf(message.content) }
 
     // ── Edit dialog ───────────────────────────────────────────────────────────
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            containerColor   = AppTheme.colors.surface,
-            title            = { Text("Edit message", style = MaterialTheme.typography.titleMedium) },
-            text             = {
+            containerColor   = sheetBg,
+            title = { Text("Edit message", style = MaterialTheme.typography.titleMedium.copy(color = onSurface)) },
+            text  = {
                 OutlinedTextField(
                     value         = editText,
                     onValueChange = { editText = it },
                     modifier      = Modifier.fillMaxWidth(),
                     colors        = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor   = Accent,
-                        unfocusedBorderColor = AppTheme.colors.borderMid,
-                        focusedTextColor     = AppTheme.colors.textPrimary,
-                        unfocusedTextColor   = AppTheme.colors.textPrimary,
+                        unfocusedBorderColor = outlineColor,
+                        focusedTextColor     = onSurface,
+                        unfocusedTextColor   = onSurface,
                         cursorColor          = Accent,
                     ),
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onEdit(editText.trim())
-                    showEditDialog = false
-                    onDismiss()
-                }) {
+                TextButton(onClick = { onEdit(editText.trim()); showEditDialog = false; onDismiss() }) {
                     Text("Save", color = Accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel", color = AppTheme.colors.textSecondary)
+                    Text("Cancel", color = onSurfaceVar)
                 }
             },
         )
@@ -76,21 +81,17 @@ fun MessageContextMenu(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            containerColor   = AppTheme.colors.surface,
-            title            = { Text("Delete message", style = MaterialTheme.typography.titleMedium) },
-            text             = { Text("This message will be deleted for everyone.", style = MaterialTheme.typography.bodyMedium) },
-            confirmButton    = {
-                TextButton(onClick = {
-                    onDelete()
-                    showDeleteDialog = false
-                    onDismiss()
-                }) {
+            containerColor   = sheetBg,
+            title = { Text("Delete message", style = MaterialTheme.typography.titleMedium.copy(color = onSurface)) },
+            text  = { Text("This message will be deleted for everyone.", style = MaterialTheme.typography.bodyMedium.copy(color = onSurfaceVar)) },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteDialog = false; onDismiss() }) {
                     Text("Delete", color = ErrorRed)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = AppTheme.colors.textSecondary)
+                    Text("Cancel", color = onSurfaceVar)
                 }
             },
         )
@@ -99,14 +100,14 @@ fun MessageContextMenu(
     // ── Bottom sheet ──────────────────────────────────────────────────────────
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor   = AppTheme.colors.surface,
-        dragHandle       = {
+        containerColor   = sheetBg,
+        dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 10.dp)
                     .size(width = 36.dp, height = 4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(AppTheme.colors.borderMid),
+                    .background(outlineColor),
             )
         },
     ) {
@@ -116,7 +117,7 @@ fun MessageContextMenu(
                 .navigationBarsPadding()
                 .padding(bottom = 16.dp),
         ) {
-            // ── Message preview ───────────────────────────────────────────────
+            // Message preview
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,12 +125,7 @@ fun MessageContextMenu(
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .height(40.dp)
-                        .background(Accent, RoundedCornerShape(2.dp))
-                )
+                Box(modifier = Modifier.width(3.dp).height(40.dp).background(Accent, RoundedCornerShape(2.dp)))
                 Column {
                     Text(
                         text  = if (isOwn) "You" else (message.sender.username ?: ""),
@@ -137,81 +133,44 @@ fun MessageContextMenu(
                     )
                     Text(
                         text     = message.content,
-                        style    = MaterialTheme.typography.bodyMedium.copy(color = AppTheme.colors.textSecondary),
+                        style    = MaterialTheme.typography.bodyMedium.copy(color = onSurfaceVar),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
 
-            HorizontalDivider(color = AppTheme.colors.borderSubtle, modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = outlineColor, modifier = Modifier.padding(vertical = 8.dp))
 
-            // ── Action rows ───────────────────────────────────────────────────
-            ContextMenuItem(
-                icon  = Icons.Default.ContentCopy,
-                label = "Copy",
-                tint  = AppTheme.colors.textPrimary,
-                onClick = { onCopy(); onDismiss() },
-            )
-            ContextMenuItem(
-                icon  = Icons.Default.Reply,
-                label = "Reply",
-                tint  = AppTheme.colors.textPrimary,
-                onClick = { onReply(); onDismiss() },
-            )
+            ContextMenuItem(icon = Icons.Default.ContentCopy, label = "Copy",  tint = onSurface,    onClick = { onCopy(); onDismiss() })
+            ContextMenuItem(icon = Icons.Default.Reply,       label = "Reply", tint = onSurface,    onClick = { onReply(); onDismiss() })
             if (isOwn) {
-                ContextMenuItem(
-                    icon  = Icons.Default.Edit,
-                    label = "Edit",
-                    tint  = AppTheme.colors.textPrimary,
-                    onClick = { showEditDialog = true },
-                )
+                ContextMenuItem(icon = Icons.Default.Edit, label = "Edit", tint = onSurface, onClick = { showEditDialog = true })
             }
             ContextMenuItem(
-                icon  = if (message.pinned) Icons.Default.PushPin else Icons.Default.PushPin,
-                label = if (message.pinned) "Unpin" else "Pin",
-                tint  = if (message.pinned) Accent else Color.White,
-                onClick = {
-                    if (message.pinned) onUnpin() else onPin()
-                    onDismiss()
-                },
+                icon    = Icons.Default.PushPin,
+                label   = if (message.pinned) "Unpin" else "Pin",
+                tint    = if (message.pinned) Accent else onSurface,
+                onClick = { if (message.pinned) onUnpin() else onPin(); onDismiss() },
             )
             if (isOwn) {
-                ContextMenuItem(
-                    icon  = Icons.Default.Delete,
-                    label = "Delete",
-                    tint  = ErrorRed,
-                    onClick = { showDeleteDialog = true },
-                )
+                ContextMenuItem(icon = Icons.Default.Delete, label = "Delete", tint = ErrorRed, onClick = { showDeleteDialog = true })
             }
         }
     }
 }
 
 @Composable
-private fun ContextMenuItem(
-    icon:    ImageVector,
-    label:   String,
-    tint:    Color,
-    onClick: () -> Unit,
-) {
+private fun ContextMenuItem(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(
-            imageVector       = icon,
-            contentDescription = label,
-            tint              = tint,
-            modifier          = Modifier.size(22.dp),
-        )
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.bodyLarge.copy(color = tint),
-        )
+        Icon(imageVector = icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyLarge.copy(color = tint))
     }
 }

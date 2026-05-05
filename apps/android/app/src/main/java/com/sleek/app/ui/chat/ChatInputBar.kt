@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.theme.*
+import androidx.compose.foundation.text.selection.TextSelectionColors
 
 /**
  * Reply preview bar + message text field + animated send button.
