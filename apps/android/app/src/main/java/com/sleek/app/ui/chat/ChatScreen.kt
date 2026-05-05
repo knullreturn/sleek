@@ -211,6 +211,7 @@ fun ChatScreen(
                             }
                         }
                     },
+                    onSwipeReply         = { replyingTo = it },
                 )
             }
         }

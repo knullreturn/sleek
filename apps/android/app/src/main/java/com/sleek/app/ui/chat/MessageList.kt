@@ -30,6 +30,7 @@ internal fun MessageList(
     typingUsers:          List<String>,
     onLongPress:          (Message) -> Unit,
     onReplyTap:           (String) -> Unit,
+    onSwipeReply:         (Message) -> Unit,
 ) {
     if (isLoading) {
         // Skeleton (first-time only — Room already has data on subsequent opens)
@@ -97,6 +98,7 @@ internal fun MessageList(
                     isHighlighted     = msg.id == highlightedMessageId,
                     onLongPress       = { onLongPress(msg) },
                     onReplyTap        = { onReplyTap(it) },
+                    onSwipeReply      = { onSwipeReply(it) },
                 )
             }
         }
