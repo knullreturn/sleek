@@ -189,6 +189,7 @@ fun ChatListScreen(
                             peer        = peer,
                             myId        = myId,
                             unreadCount = unreadCounts[chat.id] ?: 0,
+                            onPress     = { viewModel.preloadChat(chat.id) },
                             onClick     = {
                                 viewModel.clearUnread(chat.id)
                                 onOpenChat(chat.id, peer?.username ?: "Chat")

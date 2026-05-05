@@ -157,6 +157,7 @@ fun MessageBubble(
             verticalAlignment     = Alignment.Bottom,
         ) {
             Column(
+                modifier            = Modifier.widthIn(max = 280.dp),
                 horizontalAlignment = if (isOwn) Alignment.End else Alignment.Start,
             ) {
                 // ── Bubble ────────────────────────────────────────────────────

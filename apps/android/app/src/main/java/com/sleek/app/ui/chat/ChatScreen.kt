@@ -52,10 +52,36 @@ fun ChatScreen(
     val listState    = rememberLazyListState()
     var replyingTo   by remember { mutableStateOf<Message?>(null) }
     var inputValue   by remember { mutableStateOf(TextFieldValue()) }
+
+    // Restore scroll position for this chat (LRU memory in ViewModel)
+    val savedScroll = remember(chatId) { viewModel.restoreScrollPosition(chatId) }
+
+    // Save scroll position when leaving this chat
+    DisposableEffect(chatId) {
+        onDispose {
+            viewModel.saveScrollPosition(
+                chatId,
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset,
+            )
+        }
+    }
     var contextMsg   by remember { mutableStateOf<Message?>(null) }
     val clipboard    = LocalClipboardManager.current
     val scope        = rememberCoroutineScope()
+    val haptic       = androidx.compose.ui.platform.LocalHapticFeedback.current
     var highlightId  by remember { mutableStateOf<String?>(null) }
+
+    // Typing debounce — wait 300ms before showing indicator (prevents flicker)
+    var showTyping by remember { mutableStateOf(false) }
+    LaunchedEffect(state.typingUsers.isNotEmpty()) {
+        if (state.typingUsers.isNotEmpty()) {
+            delay(300)
+            showTyping = true
+        } else {
+            showTyping = false
+        }
+    }
 
     // Pre-computed in ViewModel on Dispatchers.Default — zero UI thread cost
     val grouped        = state.grouped
@@ -72,10 +98,15 @@ fun ChatScreen(
 
     // ── Scroll logic ──────────────────────────────────────────────────────────
 
-    // Initial load — jump to bottom instantly once content becomes visible
+    // Initial load — restore saved position or jump to bottom
     LaunchedEffect(contentVisible, state.messages.isNotEmpty()) {
-        if (contentVisible && state.messages.isNotEmpty())
-            listState.scrollToItem(maxOf(0, state.messages.size - 1))
+        if (contentVisible && state.messages.isNotEmpty()) {
+            if (savedScroll != null) {
+                listState.scrollToItem(savedScroll.first, savedScroll.second)
+            } else {
+                listState.scrollToItem(maxOf(0, state.messages.size - 1))
+            }
+        }
     }
 
     // New message — only animate if near bottom OR it's the user's own message
@@ -103,8 +134,8 @@ fun ChatScreen(
     }
 
     // Typing indicator → scroll to show it
-    LaunchedEffect(state.typingUsers.isNotEmpty()) {
-        if (state.typingUsers.isNotEmpty())
+    LaunchedEffect(showTyping) {
+        if (showTyping)
             listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
     }
 
@@ -191,6 +222,7 @@ fun ChatScreen(
                 inputValue    = inputValue,
                 onValueChange = { inputValue = it; viewModel.sendTyping(it.text.isNotBlank()) },
                 onSend        = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                     viewModel.sendMessage(inputValue.text.trim(), replyingTo?.id)
                     inputValue = TextFieldValue()
                     replyingTo = null
@@ -212,7 +244,7 @@ fun ChatScreen(
                     isLoading            = state.isLoading,
                     listState            = listState,
                     highlightedMessageId = highlightId,
-                    typingUsers          = state.typingUsers,
+                    typingUsers          = if (showTyping) state.typingUsers else emptyList(),
                     onLongPress          = { contextMsg = it },
                     onReplyTap           = { replyMsgId ->
                         scope.launch {

@@ -63,6 +63,13 @@ class ChatListViewModel @Inject constructor(
         }
     }
 
+    /** Pre-warm Room query on finger press-down (80ms guard applied in UI) */
+    fun preloadChat(chatId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try { messageRepository.observeMessages(chatId).first() } catch (_: Exception) {}
+        }
+    }
+
     // Filtered chats based on search query
     val chats: StateFlow<List<Chat>> = combine(_chats, _searchQuery) { chats, query ->
         if (query.isBlank()) chats

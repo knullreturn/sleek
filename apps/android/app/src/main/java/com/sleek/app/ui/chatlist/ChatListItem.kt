@@ -1,15 +1,17 @@
 package com.sleek.app.ui.chatlist
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -20,24 +22,41 @@ import com.sleek.app.data.model.User
 import com.sleek.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ChatListItem(
     chat:        Chat,
     peer:        User?,
     myId:        String?,
-    unreadCount: Int     = 0,
+    unreadCount: Int        = 0,
+    onPress:     () -> Unit = {},  // called on finger-down for preloading
     onClick:     () -> Unit,
 ) {
     val isLastMsgOwn = chat.lastMessage?.senderId == myId
     val hasUnread    = unreadCount > 0 && !isLastMsgOwn
+    val scope        = rememberCoroutineScope()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .pointerInput(chat.id) {
+                detectTapGestures(
+                    onPress = {
+                        // 80ms guard: only preload if finger stays (not a scroll flick)
+                        val preloadJob = scope.launch {
+                            delay(80)
+                            onPress()
+                        }
+                        tryAwaitRelease()
+                        preloadJob.cancel()
+                    },
+                    onTap = { onClick() },
+                )
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (peer?.avatarUrl != null) {

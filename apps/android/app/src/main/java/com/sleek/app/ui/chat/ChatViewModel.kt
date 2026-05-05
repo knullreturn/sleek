@@ -53,6 +53,30 @@ class ChatViewModel @Inject constructor(
     /** Single socket observer — started once, filters by currentChatId */
     private var socketJob: Job? = null
 
+    /**
+     * Scroll position memory — LRU(20).
+     * Stores (firstVisibleItemIndex, firstVisibleItemScrollOffset) per chatId.
+     * Saved when user leaves chat, restored on re-open.
+     */
+    private val scrollPositions = object : LinkedHashMap<String, Pair<Int, Int>>(21, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Int>>?) =
+            size > 20
+    }
+
+    fun saveScrollPosition(chatId: String, index: Int, offset: Int) {
+        scrollPositions[chatId] = index to offset
+    }
+
+    fun restoreScrollPosition(chatId: String): Pair<Int, Int>? = scrollPositions[chatId]
+
+    /** Pre-warm: start the Room flow early (called on press-down, 80ms guard in UI) */
+    fun preloadChat(chatId: String) {
+        if (currentChatId == chatId) return  // already loaded
+        viewModelScope.launch(Dispatchers.IO) {
+            messageRepository.observeMessages(chatId).first()  // prime the DB query
+        }
+    }
+
     val sleepModeEnabled: StateFlow<Boolean> = settingsDataStore.sleepModeEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
