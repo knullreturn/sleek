@@ -1,6 +1,10 @@
 package com.sleek.app.ui.chat
 
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -99,6 +103,14 @@ internal fun MessageList(
                     onLongPress       = { onLongPress(msg) },
                     onReplyTap        = { onReplyTap(it) },
                     onSwipeReply      = { onSwipeReply(it) },
+                    modifier          = Modifier.animateItem(
+                        fadeInSpec    = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness    = Spring.StiffnessMediumLow,
+                        ),
+                        fadeOutSpec   = tween(durationMillis = 100),
+                    ),
                 )
             }
         }

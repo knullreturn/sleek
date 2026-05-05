@@ -62,36 +62,40 @@ fun ChatScreen(
     val peerHasReplied = state.peerHasReplied
 
     // ── Scroll logic ──────────────────────────────────────────────────────────
-    val initialScrollDone = remember { mutableStateOf(false) }
 
+    // Initial load — jump to bottom instantly, no animation
+    LaunchedEffect(state.messages.isNotEmpty()) {
+        if (state.messages.isNotEmpty())
+            listState.scrollToItem(maxOf(0, state.messages.size - 1))
+    }
+
+    // New message — only animate if user is near bottom OR it's their own message
     LaunchedEffect(state.messages.size) {
-        if (initialScrollDone.value && state.messages.isNotEmpty())
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+        val msgs = state.messages
+        if (msgs.isEmpty()) return@LaunchedEffect
+        val lastMsg       = msgs.last()
+        val totalItems    = listState.layoutInfo.totalItemsCount
+        val lastVisible   = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        val isNearBottom  = lastVisible >= totalItems - 5
+        val isMine        = lastMsg.senderId == myId
+        if (isMine || isNearBottom)
+            listState.animateScrollToItem(totalItems)
     }
 
-    // Delay LazyColumn render until slide animation finishes (zero jank)
-    var contentVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(300); contentVisible = true }
-
-    LaunchedEffect(contentVisible) {
-        if (contentVisible && state.messages.isNotEmpty()) {
-            listState.scrollToItem(state.messages.size - 1)
-            initialScrollDone.value = true
-        }
-    }
-
+    // Keyboard opens → scroll to keep messages visible
     val density   = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
             delay(50)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
         }
     }
 
+    // Typing indicator appears → scroll to show it
     LaunchedEffect(state.typingUsers.isNotEmpty()) {
         if (state.typingUsers.isNotEmpty())
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
     }
 
     // ── Context menu ──────────────────────────────────────────────────────────
