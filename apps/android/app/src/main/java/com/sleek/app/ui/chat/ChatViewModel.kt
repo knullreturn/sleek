@@ -11,18 +11,23 @@ import com.sleek.app.data.remote.SocketEvent
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.data.repository.MessageRepository
 import com.sleek.app.notification.NotificationHelper
+import com.sleek.app.ui.chat.groupByDate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class ChatUiState(
-    val messages:    List<Message> = emptyList(),
-    val isLoading:   Boolean       = true,
-    val typingUsers: List<String>  = emptyList(),
-    val seenUpToId:  String?       = null,
-    val peer:        User?         = null,
+    val messages:       List<Message>                        = emptyList(),
+    val grouped:        List<Pair<String, List<Message>>>    = emptyList(), // pre-computed off UI thread
+    val peerHasReplied: Boolean                             = false,        // pre-computed off UI thread
+    val isLoading:      Boolean                             = true,
+    val typingUsers:    List<String>                        = emptyList(),
+    val seenUpToId:     String?                             = null,
+    val peer:           User?                               = null,
 )
 
 @HiltViewModel
@@ -88,14 +93,21 @@ class ChatViewModel @Inject constructor(
             // 1. Room Flow — scoped to this chat, cancelled on next init()
             messageRepository.observeMessages(chatId)
                 .onEach { messages ->
-                    // Ignore emissions that arrived after chatId changed
                     if (currentChatId != chatId) return@onEach
-                    val peer = messages.firstOrNull { it.senderId != myId }?.sender
+                    // Group messages on background thread — never blocks scroll
+                    val (grouped, peer, peerHasReplied) = withContext(Dispatchers.Default) {
+                        val g = groupByDate(messages)
+                        val p = messages.firstOrNull { it.senderId != myId }?.sender
+                        val r = messages.lastOrNull()?.senderId != myId
+                        Triple(g, p, r)
+                    }
                     _state.update { s ->
                         s.copy(
-                            messages  = messages,
-                            isLoading = if (messages.isNotEmpty()) false else s.isLoading,
-                            peer      = peer ?: s.peer,
+                            messages       = messages,
+                            grouped        = grouped,
+                            peerHasReplied = peerHasReplied,
+                            isLoading      = if (messages.isNotEmpty()) false else s.isLoading,
+                            peer           = peer ?: s.peer,
                         )
                     }
                 }

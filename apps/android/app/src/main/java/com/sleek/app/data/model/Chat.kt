@@ -1,5 +1,8 @@
 package com.sleek.app.data.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Chat(
     val id:          String,
     val type:        String,

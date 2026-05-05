@@ -57,9 +57,9 @@ fun ChatScreen(
     val scope        = rememberCoroutineScope()
     var highlightId  by remember { mutableStateOf<String?>(null) }
 
-    // Hoisted so onReplyTap can find scroll indices
-    val grouped        = remember(state.messages) { groupByDate(state.messages) }
-    val peerHasReplied = remember(state.messages) { state.messages.lastOrNull()?.senderId != myId }
+    // Pre-computed in ViewModel on Dispatchers.Default — zero UI thread cost
+    val grouped        = state.grouped
+    val peerHasReplied = state.peerHasReplied
 
     // ── Scroll logic ──────────────────────────────────────────────────────────
     val initialScrollDone = remember { mutableStateOf(false) }
