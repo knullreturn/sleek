@@ -1,0 +1,72 @@
+# Baseline Profile for SLEEK
+# Generated manually — covers cold-start, chat open, message scroll.
+# ART uses this to AOT-compile these classes at install time,
+# eliminating the 30-60s JIT warm-up period on first launch.
+
+# ── Compose runtime core ──────────────────────────────────────────────────────
+HSPLandroidx/compose/runtime/ComposerImpl;->**(**)**
+HSPLandroidx/compose/runtime/CompositionImpl;->**(**)**
+HSPLandroidx/compose/runtime/RecomposerKt;->**(**)**
+HSPLandroidx/compose/runtime/Recomposer;->**(**)**
+HSPLandroidx/compose/runtime/snapshots/SnapshotStateList;->**(**)**
+HSPLandroidx/compose/runtime/snapshots/SnapshotStateMap;->**(**)**
+HSPLandroidx/compose/runtime/snapshots/MutableSnapshot;->**(**)**
+HSPLandroidx/compose/runtime/internal/ComposableLambdaImpl;->**(**)**
+
+# ── Compose UI layout ─────────────────────────────────────────────────────────
+HSPLandroidx/compose/ui/node/LayoutNodeLayoutDelegate;->**(**)**
+HSPLandroidx/compose/ui/node/MeasureAndLayoutDelegate;->**(**)**
+HSPLandroidx/compose/ui/platform/AndroidComposeView;->**(**)**
+HSPLandroidx/compose/ui/node/LayoutNode;->**(**)**
+
+# ── LazyColumn / LazyList ─────────────────────────────────────────────────────
+HSPLandroidx/compose/foundation/lazy/LazyListMeasureKt;->**(**)**
+HSPLandroidx/compose/foundation/lazy/LazyListKt;->**(**)**
+HSPLandroidx/compose/foundation/lazy/LazyListState;->**(**)**
+HSPLandroidx/compose/foundation/lazy/LazyListItemProviderImpl;->**(**)**
+HSPLandroidx/compose/foundation/lazy/layout/LazyLayoutItemContentFactory;->**(**)**
+HSPLandroidx/compose/foundation/lazy/layout/LazyLayoutKt;->**(**)**
+HSPLandroidx/compose/foundation/lazy/layout/LazyLayoutPrefetchState;->**(**)**
+
+# ── Compose gestures / scroll ─────────────────────────────────────────────────
+HSPLandroidx/compose/foundation/gestures/ScrollableKt;->**(**)**
+HSPLandroidx/compose/foundation/gestures/FlingBehavior;->**(**)**
+HSPLandroidx/compose/foundation/gestures/DraggableKt;->**(**)**
+HSPLandroidx/compose/foundation/OverscrollEffect;->**(**)**
+
+# ── Compose Material3 ─────────────────────────────────────────────────────────
+HSPLandroidx/compose/material3/TextKt;->**(**)**
+HSPLandroidx/compose/material3/SurfaceKt;->**(**)**
+HSPLandroidx/compose/material3/IconKt;->**(**)**
+
+# ── Compose text ─────────────────────────────────────────────────────────────
+HSPLandroidx/compose/ui/text/TextLayoutResultKt;->**(**)**
+HSPLandroidx/compose/ui/text/MultiParagraph;->**(**)**
+
+# ── SLEEK: App startup ────────────────────────────────────────────────────────
+HSPLcom/sleek/app/MainActivity;->**(**)**
+HSPLcom/sleek/app/ui/navigation/NavGraphKt;->**(**)**
+HSPLcom/sleek/app/ui/theme/ThemeKt;->**(**)**
+HSPLcom/sleek/app/data/local/TokenDataStore;->**(**)**
+
+# ── SLEEK: Chat list (first screen after login) ───────────────────────────────
+HSPLcom/sleek/app/ui/chatlist/**;->**(**)**
+
+# ── SLEEK: Chat screen (hot path — most used feature) ────────────────────────
+HSPLcom/sleek/app/ui/chat/ChatScreenKt;->**(**)**
+HSPLcom/sleek/app/ui/chat/ChatViewModel;->**(**)**
+HSPLcom/sleek/app/ui/chat/MessageListKt;->**(**)**
+HSPLcom/sleek/app/ui/chat/ChatUtilsKt;->**(**)**
+
+# ── SLEEK: Message bubble (composed per visible item — most critical) ─────────
+HSPLcom/sleek/app/ui/chat/components/MessageBubbleKt;->**(**)**
+
+# ── SLEEK: Data layer ─────────────────────────────────────────────────────────
+HSPLcom/sleek/app/data/local/db/MessageDao_Impl;->**(**)**
+HSPLcom/sleek/app/data/local/db/AppDatabase_Impl;->**(**)**
+HSPLcom/sleek/app/data/repository/MessageRepository;->**(**)**
+HSPLcom/sleek/app/data/remote/SocketManager;->**(**)**
+
+# ── Coil image loading ────────────────────────────────────────────────────────
+HSPLcoil/compose/AsyncImageKt;->**(**)**
+HSPLcoil/ImageLoader;->**(**)**

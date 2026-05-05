@@ -45,12 +45,22 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig   = signingConfigs.getByName("release")
+            // R8 full-mode: dead code elimination, inlining, dex optimisation.
+            // This is the single biggest driver of cold-start performance.
+            // Without it release == debug in terms of bytecode quality.
+            isMinifyEnabled   = true
+            isShrinkResources = true
+            signingConfig     = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        // Profile build: release-quality code + debuggable for profiling tools
+        create("profile") {
+            initWith(buildTypes.getByName("release"))
+            isDebuggable       = true
+            signingConfig      = signingConfigs.getByName("debug")
         }
     }
 
@@ -131,4 +141,8 @@ dependencies {
     // Firebase (FCM — killed-state push notifications)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    // Baseline Profiles — AOT-compiles hot paths at install time.
+    // Eliminates the 30-60s JIT warm-up period on first launch.
+    implementation(libs.androidx.profileinstaller)
 }
