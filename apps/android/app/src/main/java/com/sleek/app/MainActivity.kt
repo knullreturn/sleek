@@ -17,7 +17,6 @@ import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.ui.navigation.NavGraph
-import com.sleek.app.ui.navigation.Screen
 import com.sleek.app.ui.theme.SleekTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
@@ -69,15 +68,12 @@ class MainActivity : ComponentActivity() {
 
             SleekTheme(darkTheme = isDark) {
                 val navController = rememberNavController()
-                NavGraph(navController = navController, startDestination = start)
-
-                LaunchedEffect(deepChatId) {
-                    if (deepChatId != null && token != null) {
-                        navController.navigate(
-                            Screen.Chat.createRoute(deepChatId, deepChatName ?: "Chat")
-                        )
-                    }
-                }
+                NavGraph(
+                    navController    = navController,
+                    startDestination = start,
+                    deepChatId       = deepChatId,
+                    deepChatName     = deepChatName,
+                )
             }
         }
     }

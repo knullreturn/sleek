@@ -1,49 +1,49 @@
 package com.sleek.app.ui.navigation
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.runtime.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.*
-import androidx.navigation.navArgument
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import com.sleek.app.ui.auth.LoginScreen
 import com.sleek.app.ui.auth.OnboardingScreen
-import com.sleek.app.ui.chat.ChatScreen
-import com.sleek.app.ui.chatlist.ChatListScreen
-import com.sleek.app.ui.profile.ProfileScreen
-
-// Smooth spring-like slide — feels natural, not mechanical
-private val slideSpec = tween<IntOffset>(340, easing = FastOutSlowInEasing)
-private val fadeSpec  = tween<Float>(260, easing = FastOutSlowInEasing)
+import com.sleek.app.ui.main.MainScreen
 
 @Composable
 fun NavGraph(
     navController:    NavHostController,
     startDestination: String,
+    deepChatId:       String? = null,
+    deepChatName:     String? = null,
     modifier:         Modifier = Modifier,
 ) {
     NavHost(
         navController    = navController,
         startDestination = startDestination,
         modifier         = modifier,
-        // ── Default transitions: horizontal slide like Telegram/WhatsApp ───────
-        enterTransition = {
-            slideInHorizontally(slideSpec) { it } + fadeIn(fadeSpec)
+        enterTransition  = {
+            slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { it } +
+            fadeIn(tween(260))
         },
-        exitTransition = {
-            slideOutHorizontally(slideSpec) { -it / 4 } + fadeOut(fadeSpec)
+        exitTransition   = {
+            slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { -it / 4 } +
+            fadeOut(tween(260))
         },
         popEnterTransition = {
-            slideInHorizontally(slideSpec) { -it / 4 } + fadeIn(fadeSpec)
+            slideInHorizontally(tween(300, easing = FastOutSlowInEasing)) { -it / 4 } +
+            fadeIn(tween(260))
         },
         popExitTransition = {
-            slideOutHorizontally(slideSpec) { it } + fadeOut(fadeSpec)
+            slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { it } +
+            fadeOut(tween(260))
         },
     ) {
-        // ── Login ─────────────────────────────────────────────────────────────
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
@@ -59,7 +59,6 @@ fun NavGraph(
             )
         }
 
-        // ── Onboarding ────────────────────────────────────────────────────────
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onDone = {
@@ -70,42 +69,17 @@ fun NavGraph(
             )
         }
 
-        // ── Chat list ─────────────────────────────────────────────────────────
+        // Main app — Chat, Profile, and ChatList all live inside MainScreen
+        // ChatList is never destroyed when navigating between them
         composable(Screen.ChatList.route) {
-            ChatListScreen(
-                onOpenChat    = { chatId, chatName ->
-                    navController.navigate(Screen.Chat.createRoute(chatId, chatName))
-                },
-                onOpenProfile = { navController.navigate(Screen.Profile.route) },
-            )
-        }
-
-        // ── Profile ───────────────────────────────────────────────────────────
-        composable(Screen.Profile.route) {
-            ProfileScreen(
-                onBack      = { navController.popBackStack() },
-                onLoggedOut = {
+            MainScreen(
+                onLoggedOut  = {
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }   // clear entire back stack
+                        popUpTo(0) { inclusive = true }
                     }
                 },
-            )
-        }
-
-        // ── Chat ──────────────────────────────────────────────────────────────
-        composable(
-            route = Screen.Chat.route,
-            arguments = listOf(
-                navArgument("chatId")   { type = NavType.StringType },
-                navArgument("chatName") { type = NavType.StringType },
-            ),
-        ) { backStack ->
-            val chatId   = backStack.arguments?.getString("chatId")   ?: return@composable
-            val chatName = backStack.arguments?.getString("chatName") ?: "Chat"
-            ChatScreen(
-                chatId   = chatId,
-                chatName = chatName,
-                onBack   = { navController.popBackStack() },
+                deepChatId   = deepChatId,
+                deepChatName = deepChatName,
             )
         }
     }

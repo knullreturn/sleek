@@ -80,56 +80,48 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Avatar
+                // Avatar — colored circle while loading, crossfade to photo when ready
                 Box(
-                    modifier = Modifier.size(88.dp).clip(CircleShape),
+                    modifier = Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .background(AccentDim),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (me?.avatarUrl != null) {
-                        AsyncImage(
-                            model = me!!.avatarUrl,
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(AccentDim),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text  = (me?.username ?: "?").take(1).uppercase(),
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    color    = Accent,
-                                    fontSize = 34.sp,
-                                ),
-                            )
-                        }
-                    }
+                    // AsyncImage handles null model gracefully — shows nothing (AccentDim bg visible)
+                    // When avatarUrl loads, it crossfades in over the background
+                    AsyncImage(
+                        model            = me?.avatarUrl,
+                        contentDescription = "Avatar",
+                        contentScale     = ContentScale.Crop,
+                        modifier         = Modifier.fillMaxSize(),
+                    )
                 }
 
-                // Name + tag
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text  = me?.username ?: "—",
-                        style = MaterialTheme.typography.headlineSmall.copy(color = onBg),
-                    )
-                    Text(
-                        text  = "#${me?.tag ?: ""}",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                    )
-                    if (email != null) {
+                // Name + tag — only render when me is loaded (avoids "#" → "#tag" flash)
+                if (me != null) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Text(
-                            text  = email!!,
-                            style = MaterialTheme.typography.bodySmall.copy(
+                            text  = me?.username ?: "—",
+                            style = MaterialTheme.typography.headlineSmall.copy(color = onBg),
+                        )
+                        Text(
+                            text  = "#${me?.tag ?: ""}",
+                            style = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             ),
                         )
+                        if (email != null) {
+                            Text(
+                                text  = email!!,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            )
+                        }
                     }
                 }
             }
