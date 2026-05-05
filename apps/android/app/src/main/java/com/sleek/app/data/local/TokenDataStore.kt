@@ -22,17 +22,20 @@ class TokenDataStore @Inject constructor(
         private val KEY_TOKEN    = stringPreferencesKey("auth_token")
         private val KEY_USER_ID  = stringPreferencesKey("user_id")
         private val KEY_USERNAME = stringPreferencesKey("username")
+        private val KEY_EMAIL    = stringPreferencesKey("user_email")
     }
 
     val token:    Flow<String?> = context.dataStore.data.map { it[KEY_TOKEN] }
     val userId:   Flow<String?> = context.dataStore.data.map { it[KEY_USER_ID] }
     val username: Flow<String?> = context.dataStore.data.map { it[KEY_USERNAME] }
+    val email:    Flow<String?> = context.dataStore.data.map { it[KEY_EMAIL] }
 
-    suspend fun save(token: String, userId: String, username: String?) {
+    suspend fun save(token: String, userId: String, username: String?, email: String? = null) {
         context.dataStore.edit { prefs ->
             prefs[KEY_TOKEN]    = token
             prefs[KEY_USER_ID]  = userId
             username?.let { prefs[KEY_USERNAME] = it }
+            email?.let    { prefs[KEY_EMAIL]    = it }
         }
     }
 

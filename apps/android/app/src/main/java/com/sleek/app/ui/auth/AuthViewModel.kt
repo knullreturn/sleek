@@ -59,15 +59,16 @@ class AuthViewModel @Inject constructor(
                 val result = credentialManager.getCredential(context, request)
                 val credential = result.credential
 
-                // Extract idToken
+                // Extract idToken + email
                 val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
                 val idToken = googleCredential.idToken
+                val email   = googleCredential.id   // Google email address
 
                 // Send to backend
                 val res = apiService.googleAuth(GoogleAuthRequest(idToken))
                 if (res.isSuccessful) {
                     val body = res.body()!!
-                    tokenDataStore.save(body.token, body.user.id, body.user.username)
+                    tokenDataStore.save(body.token, body.user.id, body.user.username, email)
                     socketManager.connect(body.token)
                     // Save FCM token now that we have an auth token
                     saveFcmTokenSilently()

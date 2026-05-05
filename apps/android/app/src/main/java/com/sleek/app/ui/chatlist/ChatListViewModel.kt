@@ -2,6 +2,7 @@ package com.sleek.app.ui.chatlist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.model.Chat
 import com.sleek.app.data.model.User
@@ -24,6 +25,7 @@ class ChatListViewModel @Inject constructor(
     private val socketManager:       SocketManager,
     private val messageRepository:   MessageRepository,
     private val notificationHelper:  NotificationHelper,
+    private val settingsDataStore:   SettingsDataStore,
 ) : ViewModel() {
 
     private val _chats     = MutableStateFlow<List<Chat>>(emptyList())
@@ -75,7 +77,12 @@ class ChatListViewModel @Inject constructor(
         loadChats()
         loadMe()
         observeSocket()
-        // Debounce DM search
+        // Sync notifications toggle → NotificationHelper so it takes effect immediately
+        viewModelScope.launch {
+            settingsDataStore.notificationsEnabled.collect { enabled ->
+                NotificationHelper.notificationsEnabled = enabled
+            }
+        }
         viewModelScope.launch {
             _dmQuery.debounce(300).collect { q ->
                 if (q.length >= 2) searchUsers(q)

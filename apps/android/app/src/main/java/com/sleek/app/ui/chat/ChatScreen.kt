@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -39,8 +41,9 @@ fun ChatScreen(
 ) {
     remember(chatId) { viewModel.init(chatId) }
 
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    val myId  by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
+    val state     by viewModel.state.collectAsStateWithLifecycle()
+    val myId      by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
+    val sleepMode by viewModel.sleepModeEnabled.collectAsStateWithLifecycle()
 
     // Mark seen when the last peer message changes
     val lastPeerMsgId = state.messages.lastOrNull { it.senderId != myId }?.id
@@ -107,7 +110,7 @@ fun ChatScreen(
     }
 
     Scaffold(
-        containerColor = Black,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
@@ -117,7 +120,7 @@ fun ChatScreen(
                             if (peer?.avatarUrl != null) {
                                 AsyncImage(model = peer.avatarUrl, contentDescription = peer.username, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                             } else {
-                                Box(modifier = Modifier.fillMaxSize().background(SurfaceHigh), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
                                     Text(
                                         text  = (peer?.username ?: chatName).take(1).uppercase(),
                                         style = MaterialTheme.typography.labelMedium.copy(color = Accent),
@@ -125,7 +128,26 @@ fun ChatScreen(
                                 }
                             }
                         }
-                        Text(text = peer?.username ?: chatName, style = MaterialTheme.typography.titleMedium)
+                        Column {
+                            Text(text = peer?.username ?: chatName, style = MaterialTheme.typography.titleMedium)
+                            if (sleepMode) {
+                                Surface(
+                                    shape    = RoundedCornerShape(4.dp),
+                                    color    = Accent.copy(alpha = 0.15f),
+                                    modifier = Modifier.padding(top = 2.dp),
+                                ) {
+                                    Text(
+                                        text  = "💤 Sleep Mode",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color         = Accent,
+                                            fontSize      = 9.sp,
+                                            letterSpacing = 0.5.sp,
+                                        ),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 navigationIcon = {
@@ -141,7 +163,11 @@ fun ChatScreen(
                         Icon(Icons.Default.PushPin, contentDescription = "Pins", tint = TextSecondary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor         = MaterialTheme.colorScheme.surface,
+                    titleContentColor      = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         },
         bottomBar = {

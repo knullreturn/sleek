@@ -26,6 +26,8 @@ class NotificationHelper @Inject constructor(
         @Volatile var activeChatId: String? = null
         // Set by ChatListViewModel when user is known
         @Volatile var myUserId: String? = null
+        // Mirrors SettingsDataStore — updated by ChatListViewModel on startup
+        @Volatile var notificationsEnabled: Boolean = true
     }
 
     fun createChannel() {
@@ -51,6 +53,8 @@ class NotificationHelper @Inject constructor(
     ) {
         // Don't notify if the user is currently in that chat
         if (chatId == activeChatId) return
+        // Don't notify if the user has disabled notifications
+        if (!notificationsEnabled) return
 
         // Intent: tapping the notification opens MainActivity and lands in that chat
         val intent = Intent(context, MainActivity::class.java).apply {

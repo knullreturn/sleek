@@ -2,6 +2,7 @@ package com.sleek.app.ui.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.model.Message
 import com.sleek.app.data.model.User
@@ -29,6 +30,7 @@ class ChatViewModel @Inject constructor(
     private val socketManager:     SocketManager,
     private val tokenDataStore:    TokenDataStore,
     private val messageRepository: MessageRepository,
+    private val settingsDataStore: SettingsDataStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatUiState())
@@ -36,9 +38,12 @@ class ChatViewModel @Inject constructor(
 
     val myUserId: Flow<String?> = tokenDataStore.userId
 
+    /** Exposed to ChatScreen so it can show the 💤 sleep mode tag in the header */
+    val sleepModeEnabled: StateFlow<Boolean> = settingsDataStore.sleepModeEnabled
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     private var currentChatId: String = ""
 
-    // ── Public: expose whether Room likely has data (synchronous) ─────────────
     fun mightHaveData(chatId: String) = messageRepository.mightHaveData(chatId)
 
     fun init(chatId: String) {

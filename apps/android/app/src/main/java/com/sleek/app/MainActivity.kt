@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
+import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.ui.navigation.NavGraph
@@ -32,13 +33,13 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_CHAT_NAME = "extra_chat_name"
     }
 
-    @Inject lateinit var tokenDataStore: TokenDataStore
-    @Inject lateinit var socketManager:  SocketManager
+    @Inject lateinit var tokenDataStore:  TokenDataStore
+    @Inject lateinit var socketManager:   SocketManager
+    @Inject lateinit var settingsDataStore: SettingsDataStore
 
-    // Launcher for POST_NOTIFICATIONS permission request
     private val notifPermLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* granted or denied — we just silently accept the result */ }
+    ) { /* silently accept result */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -59,16 +60,17 @@ class MainActivity : ComponentActivity() {
         token?.let { lifecycleScope.launch { socketManager.connect(it) } }
         splash.setKeepOnScreenCondition { false }
 
-        // Read deep-link from notification tap (if any)
         val deepChatId   = intent.getStringExtra(EXTRA_CHAT_ID)
         val deepChatName = intent.getStringExtra(EXTRA_CHAT_NAME)
 
         setContent {
-            SleekTheme {
+            // Collect theme preference — default dark while loading
+            val isDark by settingsDataStore.isDarkTheme.collectAsState(initial = true)
+
+            SleekTheme(darkTheme = isDark) {
                 val navController = rememberNavController()
                 NavGraph(navController = navController, startDestination = start)
 
-                // Navigate into the chat that the user tapped in the notification
                 LaunchedEffect(deepChatId) {
                     if (deepChatId != null && token != null) {
                         navController.navigate(
