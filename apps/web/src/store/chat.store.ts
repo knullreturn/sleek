@@ -43,6 +43,7 @@ interface ChatState {
   upsertChat:      (chat: Chat) => void;
   setActiveChatId: (id: string | null) => void;
   setMessages:     (chatId: string, messages: Message[]) => void;
+  mergeMessages:   (chatId: string, incoming: Message[]) => void;  // merge by id, no overwrites
   prependMessages: (chatId: string, messages: Message[]) => void;
   addMessage:      (message: Message) => void;
   updateMessage:   (chatId: string, patch: Partial<Message> & { id: string }) => void;
@@ -51,6 +52,7 @@ interface ChatState {
   setSeenUpTo:     (chatId: string, messageId: string | null) => void;
   incrementUnread: (chatId: string) => void;
   clearUnread:     (chatId: string) => void;
+  clearTyping:     (chatId: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -83,6 +85,23 @@ export const useChatStore = create<ChatState>((set) => ({
 
   setMessages: (chatId, messages) =>
     set((state) => ({ messages: { ...state.messages, [chatId]: messages } })),
+
+  // Fix: merge-by-id instead of replace — HTTP fetch can't overwrite socket messages
+  mergeMessages: (chatId, incoming) =>
+    set((state) => {
+      const existingMap = new Map(
+        (state.messages[chatId] ?? []).map((m) => [m.id, m])
+      );
+      for (const m of incoming) existingMap.set(m.id, m);
+      const merged = [...existingMap.values()].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      return { messages: { ...state.messages, [chatId]: merged } };
+    }),
+
+  // Fix: clear typing users when switching chats (web side)
+  clearTyping: (chatId) =>
+    set((state) => ({ typing: { ...state.typing, [chatId]: [] } })),
 
   prependMessages: (chatId, messages) =>
     set((state) => ({

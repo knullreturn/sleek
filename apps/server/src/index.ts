@@ -20,14 +20,15 @@ async function bootstrap() {
 
   // ── Plugins ─────────────────────────────────────────────────────────────────
   await app.register(helmet, { contentSecurityPolicy: false });
-  // ✅ Security: CORS fails closed — if FRONTEND_URL is missing in production, refuse all origins.
-  // In development, allow all origins for convenience.
+  // ✅ Security: CORS restricted to FRONTEND_URL in production.
+  // Falls back to deny-all (false) if FRONTEND_URL is missing — warn loudly but don't crash.
   const corsOrigin = (() => {
     if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.split(',');
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('FRONTEND_URL must be set in production — refusing to start with open CORS');
+      console.error('[SECURITY] FRONTEND_URL is not set — CORS will deny all cross-origin requests. Set FRONTEND_URL in Railway env vars.');
+      return false; // deny all cross-origin requests rather than crash or allow all
     }
-    return true; // dev only
+    return true; // dev only: allow all origins
   })();
 
   await app.register(cors, {

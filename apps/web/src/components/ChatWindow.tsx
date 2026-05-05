@@ -62,6 +62,7 @@ export function ChatWindow({ chatId }: { chatId: string }) {
 
   // Reset compose state on chat switch
   useEffect(() => {
+    setInput('');         // Fix: clear draft — previously carried into the next chat
     setReplyingTo(null);
     setContextMenu(null);
     setEditingId(null);
@@ -85,16 +86,28 @@ export function ChatWindow({ chatId }: { chatId: string }) {
   }, [chatId]);
 
   // ── Read receipts ──────────────────────────────────────────────────────────
+  // Fix: only emit mark_seen when the chat is actually visible AND the user is
+  // scrolled near the bottom (message is in the viewport). Previously emitted
+  // immediately on any message change, even if user was scrolled far up.
   useEffect(() => {
     const emitSeen = () => {
       if (document.visibilityState !== 'visible') return;
       const lastPeerMsg = [...messages].reverse().find((m) => m.senderId !== user?.id);
-      if (lastPeerMsg) getSocket()?.emit('mark_seen', { chatId, messageId: lastPeerMsg.id });
+      if (!lastPeerMsg) return;
+
+      // Only mark seen if the scroll container is near the bottom
+      const container = canvasRef.current;
+      if (container) {
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        if (distanceFromBottom > 120) return; // message not visible — skip
+      }
+
+      getSocket()?.emit('mark_seen', { chatId, messageId: lastPeerMsg.id });
     };
     emitSeen();
     document.addEventListener('visibilitychange', emitSeen);
     return () => document.removeEventListener('visibilitychange', emitSeen);
-  }, [chatId, messages, user?.id]);
+  }, [chatId, messages, user?.id, canvasRef]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const peerHasReplied = useMemo(() => {

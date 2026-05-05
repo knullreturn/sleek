@@ -45,13 +45,36 @@ fun ChatScreen(
     val myId      by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
     val sleepMode by viewModel.sleepModeEnabled.collectAsStateWithLifecycle()
 
-    // Mark seen when the last peer message changes
-    val lastPeerMsgId = state.messages.lastOrNull { it.senderId != myId }?.id
-    LaunchedEffect(lastPeerMsgId) { lastPeerMsgId?.let { viewModel.markSeen(it) } }
-
-    val listState    = rememberLazyListState()
-    var replyingTo   by remember { mutableStateOf<Message?>(null) }
+    // ── State declarations (order matters: listState used before UI state) ────
+    val listState         = rememberLazyListState()
+    val scope             = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val haptic            = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val clipboard         = LocalClipboardManager.current
+    var highlightId  by remember { mutableStateOf<String?>(null) }
     var inputValue   by remember { mutableStateOf(TextFieldValue()) }
+    var replyingTo   by remember { mutableStateOf<Message?>(null) }
+    var contextMsg   by remember { mutableStateOf<Message?>(null) }
+
+    // Mark seen when the last peer message changes
+    // Fix: only mark seen if message is actually visible in the list
+    // Previously fired immediately on message arrival regardless of scroll position
+    val lastPeerMsgId = state.messages.lastOrNull { it.senderId != myId }?.id
+    LaunchedEffect(lastPeerMsgId) {
+        if (lastPeerMsgId == null) return@LaunchedEffect
+        // Wait for layout to settle, then check visibility
+        delay(300)
+        val visibleIds = listState.layoutInfo.visibleItemsInfo.map { it.key }
+        if (visibleIds.contains(lastPeerMsgId)) {
+            viewModel.markSeen(lastPeerMsgId)
+        }
+    }
+
+    // Fix: clear draft and reply when switching chats (previously carried to next chat)
+    LaunchedEffect(chatId) {
+        inputValue = TextFieldValue()
+        replyingTo = null
+    }
 
     // Restore scroll position for this chat (LRU memory in ViewModel)
     val savedScroll = remember(chatId) { viewModel.restoreScrollPosition(chatId) }
@@ -66,11 +89,6 @@ fun ChatScreen(
             )
         }
     }
-    var contextMsg   by remember { mutableStateOf<Message?>(null) }
-    val clipboard    = LocalClipboardManager.current
-    val scope        = rememberCoroutineScope()
-    val haptic       = androidx.compose.ui.platform.LocalHapticFeedback.current
-    var highlightId  by remember { mutableStateOf<String?>(null) }
 
     // Typing debounce — wait 300ms before showing indicator (prevents flicker)
     var showTyping by remember { mutableStateOf(false) }
@@ -129,15 +147,8 @@ fun ChatScreen(
             listState.scrollToChatItem(maxOf(0, totalItems - 1))
     }
 
-    // Keyboard opens → scroll to keep input visible
-    val density   = LocalDensity.current
-    val imeBottom = WindowInsets.ime.getBottom(density)
-    LaunchedEffect(imeBottom) {
-        if (imeBottom > 0 && state.messages.isNotEmpty()) {
-            delay(50)
-            listState.scrollToChatItem(lastListIndex)
-        }
-    }
+    // Fix: removed LaunchedEffect(imeBottom) — explicit scroll on keyboard open caused
+    // a double-movement jump. adjustResize + imePadding() handles this correctly on its own.
 
     // Typing indicator → scroll to show it
     LaunchedEffect(showTyping) {
@@ -166,6 +177,7 @@ fun ChatScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost   = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -211,10 +223,10 @@ fun ChatScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: in-chat search */ }) {
+                    IconButton(onClick = { scope.launch { snackbarHostState.showSnackbar("Search coming soon") } }) {
                         Icon(Icons.Default.Search, contentDescription = "Search", tint = AppTheme.colors.textSecondary)
                     }
-                    IconButton(onClick = { /* TODO: pinned messages */ }) {
+                    IconButton(onClick = { scope.launch { snackbarHostState.showSnackbar("Pinned messages coming soon") } }) {
                         Icon(Icons.Default.PushPin, contentDescription = "Pins", tint = AppTheme.colors.textSecondary)
                     }
                 },

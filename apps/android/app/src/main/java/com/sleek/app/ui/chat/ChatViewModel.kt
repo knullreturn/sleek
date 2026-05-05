@@ -100,9 +100,11 @@ class ChatViewModel @Inject constructor(
         NotificationHelper.activeChatId = chatId
         currentChatId = chatId
 
-        // ── Reset state immediately — CLEAR old messages before new ones load ─
+        // ── Reset state immediately — CLEAR old messages + typing before new chat loads ─
         val hasData = messageRepository.mightHaveData(chatId)
-        _state.value = ChatUiState(isLoading = !hasData)
+        // Fix: explicitly clear typingUsers — peer's indicator from previous chat would
+        // persist until the next socket event if not cleared here.
+        _state.value = ChatUiState(isLoading = !hasData, typingUsers = emptyList())
 
         // ── Start socket observer once (or restart it) ───────────────────────
         socketJob?.cancel()

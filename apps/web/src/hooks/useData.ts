@@ -24,7 +24,7 @@ export function useChats() {
 }
 
 export function useMessages(chatId: string | null) {
-  const setMessages = useChatStore((s) => s.setMessages);
+  const mergeMessages = useChatStore((s) => s.mergeMessages);
 
   const query = useQuery({
     queryKey: ['messages', chatId],
@@ -39,8 +39,10 @@ export function useMessages(chatId: string | null) {
   });
 
   useEffect(() => {
-    if (query.data && chatId) setMessages(chatId, query.data);
-  }, [query.data, chatId, setMessages]);
+    // Fix: use mergeMessages instead of setMessages — HTTP response can no longer
+    // overwrite socket messages that arrived before the fetch completed.
+    if (query.data && chatId) mergeMessages(chatId, query.data);
+  }, [query.data, chatId, mergeMessages]);
 
   const sendMessage = useCallback(
     (content: string, replyToId?: string) => {

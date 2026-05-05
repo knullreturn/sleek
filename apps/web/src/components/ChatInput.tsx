@@ -12,9 +12,13 @@ interface ChatInputProps {
 // ── ChatInput ─────────────────────────────────────────────────────────────────
 // The message compose bar at the bottom of the chat window.
 export function ChatInput({ input, onInputChange, onKeyDown, onSend, textareaRef }: ChatInputProps) {
+  const comingSoon = (feature: string) =>
+    alert(`${feature} is coming soon!`); // replace with toast when toast system is added
+
   return (
     <div className="chat-input-bar">
-      <button className="icon-btn" title="Attach file" aria-label="Attach file">
+      <button className="icon-btn" title="Attach file (coming soon)" aria-label="Attach file"
+        onClick={() => comingSoon('File attachments')}>
         <Paperclip size={18} />
       </button>
 
@@ -31,7 +35,8 @@ export function ChatInput({ input, onInputChange, onKeyDown, onSend, textareaRef
         aria-label="Message input"
       />
 
-      <button className="icon-btn" title="Emoji" aria-label="Emoji">
+      <button className="icon-btn" title="Emoji (coming soon)" aria-label="Emoji"
+        onClick={() => comingSoon('Emoji picker')}>
         <Smile size={18} />
       </button>
 
