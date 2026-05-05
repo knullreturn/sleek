@@ -24,6 +24,7 @@ import com.sleek.app.data.model.Message
 import com.sleek.app.ui.chat.components.MessageBubble
 import com.sleek.app.ui.chat.components.TypingIndicator
 import com.sleek.app.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
