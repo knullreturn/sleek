@@ -41,9 +41,8 @@ fun ChatScreen(
 ) {
     remember(chatId) { viewModel.init(chatId) }
 
-    val state     by viewModel.state.collectAsStateWithLifecycle()
-    val myId      by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
-    val sleepMode by viewModel.sleepModeEnabled.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val myId  by viewModel.myUserId.collectAsStateWithLifecycle(initialValue = null)
 
     // ── State declarations (order matters: listState used before UI state) ────
     val listState         = rememberLazyListState()
@@ -213,23 +212,7 @@ fun ChatScreen(
                         Column {
                             Text(text = peer?.username ?: chatName, style = MaterialTheme.typography.titleMedium)
                             when {
-                                // MY sleep mode badge — I turned it on, show it to me
-                                sleepMode -> Surface(
-                                    shape    = RoundedCornerShape(4.dp),
-                                    color    = Accent.copy(alpha = 0.15f),
-                                    modifier = Modifier.padding(top = 2.dp),
-                                ) {
-                                    Text(
-                                        text  = "💤 Sleep Mode",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color         = Accent,
-                                            fontSize      = 9.sp,
-                                            letterSpacing = 0.5.sp,
-                                        ),
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                                    )
-                                }
-                                // PEER's sleep mode — they turned it on, show it to me
+                                // Peer has sleep/DND on
                                 state.peerSleeping -> Text(
                                     text  = "💤 Do Not Disturb",
                                     style = MaterialTheme.typography.labelSmall.copy(
@@ -238,16 +221,16 @@ fun ChatScreen(
                                         letterSpacing = 0.5.sp,
                                     ),
                                 )
-                                // Peer is online (not sleeping)
+                                // Peer is online
                                 state.peerOnline -> Text(
                                     text  = "● Online",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color     = androidx.compose.ui.graphics.Color(0xFF4CAF50),
-                                        fontSize  = 9.sp,
+                                        color    = androidx.compose.ui.graphics.Color(0xFF4CAF50),
+                                        fontSize = 9.sp,
                                     ),
                                 )
-                                // Peer is offline
-                                else -> {} // no subtitle when offline — less noise
+                                // Peer offline — no subtitle, less noise
+                                else -> {}
                             }
                         }
                     }
