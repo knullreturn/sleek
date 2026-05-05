@@ -17,6 +17,7 @@ import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.remote.SocketManager
 import com.sleek.app.ui.navigation.NavGraph
+import com.sleek.app.ui.navigation.Screen
 import com.sleek.app.ui.theme.SleekTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
