@@ -117,16 +117,20 @@ fun ChatScreen(
 
     // ── Scroll logic ──────────────────────────────────────────────────────────
 
-    // Initial load — restore saved position or jump to bottom (index 0 = bottom with reverseLayout)
+    // Initial load — jump to bottom (index 0) or restore saved position.
+    // Guard: wait until LazyColumn has composed at least 1 item before scrolling.
     LaunchedEffect(contentVisible, state.messages.isNotEmpty()) {
         if (contentVisible && state.messages.isNotEmpty()) {
+            // Wait for the LazyColumn to have at least 1 laid-out item
+            if (listState.layoutInfo.totalItemsCount == 0) return@LaunchedEffect
             if (savedScroll != null) {
+                val maxIdx = (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
                 listState.scrollToItem(
-                    index        = savedScroll.first,
+                    index        = savedScroll.first.coerceAtMost(maxIdx),
                     scrollOffset = savedScroll.second,
                 )
             } else {
-                listState.scrollToItem(0)  // P1: 0 = bottom
+                listState.scrollToItem(0)  // 0 = bottom with reverseLayout
             }
         }
     }
