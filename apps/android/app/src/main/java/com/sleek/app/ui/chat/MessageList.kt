@@ -15,14 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.sleek.app.data.model.Message
 import com.sleek.app.ui.chat.components.MessageBubble
@@ -32,7 +26,7 @@ import kotlinx.coroutines.delay
 
 /**
  * Renders the message list area: loading skeleton, date-grouped LazyColumn,
- * floating date pill, rubber band overscroll, and typing indicator.
+ * floating date pill, controlled fling, and typing indicator.
  * Fully stateless — all data/callbacks flow in.
  */
 @Composable
@@ -78,14 +72,14 @@ internal fun MessageList(
 
     val context = LocalContext.current
 
-    // ── Low-end device detection (disable rubber band on low-RAM devices) ─────
+    // ── Low-end device detection (gentler fling on low-RAM devices) ─────
     val isLowRam = remember {
         (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).isLowRamDevice
     }
 
-    // ── Rubber band overscroll ─────────────────────────────────────────────────
+    // ── Capped fling — chat should feel controlled on weaker devices ─────
     val density = LocalDensity.current
-    val maxFlingVelocityPx = with(density) { if (isLowRam) 2200.dp.toPx() else 3200.dp.toPx() }
+    val maxFlingVelocityPx = with(density) { if (isLowRam) 1800.dp.toPx() else 2600.dp.toPx() }
     val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
     val cappedFlingBehavior = remember(defaultFlingBehavior, maxFlingVelocityPx) {
         object : FlingBehavior {
@@ -95,37 +89,6 @@ internal fun MessageList(
                     maximumValue = maxFlingVelocityPx,
                 )
                 return with(defaultFlingBehavior) { performFling(cappedVelocity) }
-            }
-        }
-    }
-
-    val maxOverscrollPx = with(density) { 40.dp.toPx() }
-
-    var overscrollOffset by remember { mutableFloatStateOf(0f) }
-    val overscrollConnection = remember(isLowRam, maxOverscrollPx) {
-        if (isLowRam) null
-        else object : NestedScrollConnection {
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source:   NestedScrollSource,
-            ): Offset {
-                if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    val resistance = available.y * 0.28f
-                    overscrollOffset = (overscrollOffset + resistance)
-                        .coerceIn(-maxOverscrollPx, maxOverscrollPx)
-                }
-                return Offset.Zero
-            }
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                Animatable(overscrollOffset).animateTo(
-                    targetValue   = 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioHighBouncy,
-                        stiffness    = Spring.StiffnessMedium,
-                    ),
-                ) { overscrollOffset = value }
-                return super.onPostFling(consumed, available)
             }
         }
     }
@@ -155,16 +118,10 @@ internal fun MessageList(
     }
 
     // ── Layout ─────────────────────────────────────────────────────────────────
-    Box(
-        modifier = Modifier.fillMaxSize().let {
-            if (overscrollConnection != null) it.nestedScroll(overscrollConnection) else it
-        },
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state          = listState,
-            modifier       = Modifier
-                .fillMaxSize()
-                .graphicsLayer { translationY = overscrollOffset },
+            modifier       = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp),
             flingBehavior  = cappedFlingBehavior,
         ) {

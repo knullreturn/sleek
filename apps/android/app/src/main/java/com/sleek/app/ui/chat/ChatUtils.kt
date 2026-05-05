@@ -47,7 +47,7 @@ internal fun chatLazyItemCount(
 internal suspend fun LazyListState.scrollToChatItem(
     targetIndex: Int,
     animateNearby: Boolean = true,
-    nearbyThreshold: Int = 6,
+    nearbyThreshold: Int = 4,
 ) {
     val safeTarget = targetIndex.coerceAtLeast(0)
     val distance = abs(safeTarget - firstVisibleItemIndex)
