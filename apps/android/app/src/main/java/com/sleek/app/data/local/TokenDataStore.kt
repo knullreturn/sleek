@@ -19,16 +19,20 @@ class TokenDataStore @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
-        private val KEY_TOKEN    = stringPreferencesKey("auth_token")
-        private val KEY_USER_ID  = stringPreferencesKey("user_id")
-        private val KEY_USERNAME = stringPreferencesKey("username")
-        private val KEY_EMAIL    = stringPreferencesKey("user_email")
+        private val KEY_TOKEN     = stringPreferencesKey("auth_token")
+        private val KEY_USER_ID   = stringPreferencesKey("user_id")
+        private val KEY_USERNAME  = stringPreferencesKey("username")
+        private val KEY_EMAIL     = stringPreferencesKey("user_email")
+        private val KEY_AVATAR    = stringPreferencesKey("user_avatar")   // ← NEW
+        private val KEY_TAG       = stringPreferencesKey("user_tag")      // ← NEW
     }
 
-    val token:    Flow<String?> = context.dataStore.data.map { it[KEY_TOKEN] }
-    val userId:   Flow<String?> = context.dataStore.data.map { it[KEY_USER_ID] }
-    val username: Flow<String?> = context.dataStore.data.map { it[KEY_USERNAME] }
-    val email:    Flow<String?> = context.dataStore.data.map { it[KEY_EMAIL] }
+    val token:     Flow<String?> = context.dataStore.data.map { it[KEY_TOKEN] }
+    val userId:    Flow<String?> = context.dataStore.data.map { it[KEY_USER_ID] }
+    val username:  Flow<String?> = context.dataStore.data.map { it[KEY_USERNAME] }
+    val email:     Flow<String?> = context.dataStore.data.map { it[KEY_EMAIL] }
+    val avatarUrl: Flow<String?> = context.dataStore.data.map { it[KEY_AVATAR] }
+    val tag:       Flow<String?> = context.dataStore.data.map { it[KEY_TAG] }
 
     suspend fun save(token: String, userId: String, username: String?, email: String? = null) {
         context.dataStore.edit { prefs ->
@@ -36,6 +40,16 @@ class TokenDataStore @Inject constructor(
             prefs[KEY_USER_ID]  = userId
             username?.let { prefs[KEY_USERNAME] = it }
             email?.let    { prefs[KEY_EMAIL]    = it }
+        }
+    }
+
+    /** Call after every successful getMe() to keep profile data fresh in cache */
+    suspend fun saveProfile(avatarUrl: String?, tag: String?, username: String?, email: String?) {
+        context.dataStore.edit { prefs ->
+            avatarUrl?.let { prefs[KEY_AVATAR]   = it }
+            tag?.let       { prefs[KEY_TAG]       = it }
+            username?.let  { prefs[KEY_USERNAME]  = it }
+            email?.let     { prefs[KEY_EMAIL]     = it }
         }
     }
 
