@@ -29,7 +29,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -78,8 +77,13 @@ fun MessageBubble(
     val haptic    = LocalHapticFeedback.current
     val scope     = rememberCoroutineScope()
     val threshold = with(density) { 72.dp.toPx() }
-    val swipeOffset = remember(message.id) { Animatable(0f) }
-    var triggered by remember(message.id) { mutableStateOf(false) }
+    // No key — reuse across recycled items; reset via LaunchedEffect below
+    val swipeOffset = remember { Animatable(0f) }
+    var triggered by remember { mutableStateOf(false) }
+    LaunchedEffect(message.id) {
+        swipeOffset.snapTo(0f)
+        triggered = false
+    }
 
     // Icon scales from 0 → 1 as swipe reaches threshold
     val iconProgress = (swipeOffset.value / threshold).coerceIn(0f, 1f)
@@ -138,11 +142,11 @@ fun MessageBubble(
             )
         }
 
-        // ── Message row — slides right as user drags ──────────────────────────
+        // ── Message row — render-thread slide via graphicsLayer ─────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .offset { IntOffset(swipeOffset.value.roundToInt(), 0) }
+                .graphicsLayer { translationX = swipeOffset.value }
                 .padding(
                     start  = if (isOwn) 64.dp else 8.dp,
                     end    = if (isOwn) 8.dp  else 64.dp,
