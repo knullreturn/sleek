@@ -49,10 +49,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // ── Auth token — read async, hold splash until done ───────────────────
-        // Fix: was runBlocking which blocked the main thread on every cold start.
-        var startDestination: String? = null
-        var resolvedToken:    String? = null
+        // mutableStateOf = Compose observes changes. Plain var (old code) was read
+        // once at first composition (null) and never triggered recomposition when
+        // the coroutine set the route — causing a permanent black screen.
+        var startDestination by mutableStateOf<String?>(null)
+        var resolvedToken    by mutableStateOf<String?>(null)
 
         splash.setKeepOnScreenCondition { startDestination == null }
 
