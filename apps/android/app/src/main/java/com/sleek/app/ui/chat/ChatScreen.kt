@@ -86,6 +86,9 @@ fun ChatScreen(
     // Pre-computed in ViewModel on Dispatchers.Default — zero UI thread cost
     val grouped        = state.grouped
     val peerHasReplied = state.peerHasReplied
+    val lastListIndex  = remember(grouped, showTyping) {
+        maxOf(0, chatLazyItemCount(grouped, hasTyping = showTyping) - 1)
+    }
 
     // ── Content sequencing — slide in page first, THEN render messages ────────
     // Without this, the page slide animation and full LazyColumn composition
@@ -102,9 +105,12 @@ fun ChatScreen(
     LaunchedEffect(contentVisible, state.messages.isNotEmpty()) {
         if (contentVisible && state.messages.isNotEmpty()) {
             if (savedScroll != null) {
-                listState.scrollToItem(savedScroll.first, savedScroll.second)
+                listState.scrollToItem(
+                    index        = savedScroll.first.coerceAtMost(lastListIndex),
+                    scrollOffset = savedScroll.second,
+                )
             } else {
-                listState.scrollToItem(maxOf(0, state.messages.size - 1))
+                listState.scrollToItem(lastListIndex)
             }
         }
     }
@@ -120,7 +126,7 @@ fun ChatScreen(
         val isNearBottom = lastVisible >= totalItems - 5
         val isMine       = lastMsg.senderId == myId
         if (isMine || isNearBottom)
-            listState.animateScrollToItem(totalItems)
+            listState.animateScrollToItem(maxOf(0, totalItems - 1))
     }
 
     // Keyboard opens → scroll to keep input visible
@@ -129,14 +135,18 @@ fun ChatScreen(
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
             delay(50)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
+            listState.animateScrollToItem(lastListIndex)
         }
     }
 
     // Typing indicator → scroll to show it
     LaunchedEffect(showTyping) {
-        if (showTyping)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
+        if (showTyping) {
+            val totalItems   = listState.layoutInfo.totalItemsCount
+            val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val isNearBottom = lastVisible >= totalItems - 5
+            if (isNearBottom) listState.animateScrollToItem(lastListIndex)
+        }
     }
 
     // ── Context menu ──────────────────────────────────────────────────────────

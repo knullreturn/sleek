@@ -36,9 +36,6 @@ import com.sleek.app.data.model.Message
 import com.sleek.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @Composable
 fun MessageBubble(
@@ -75,18 +72,17 @@ fun MessageBubble(
     // ── Swipe-to-reply gesture ────────────────────────────────────────────────
     val density   = LocalDensity.current
     val haptic    = LocalHapticFeedback.current
-    val scope     = rememberCoroutineScope()
     val threshold = with(density) { 72.dp.toPx() }
-    // No key — reuse across recycled items; reset via LaunchedEffect below
-    val swipeOffset = remember { Animatable(0f) }
+    // Plain state keeps drag updates synchronous without coroutine churn.
+    var swipeOffset by remember { mutableFloatStateOf(0f) }
     var triggered by remember { mutableStateOf(false) }
     LaunchedEffect(message.id) {
-        swipeOffset.snapTo(0f)
+        swipeOffset = 0f
         triggered = false
     }
 
     // Icon scales from 0 → 1 as swipe reaches threshold
-    val iconProgress = (swipeOffset.value / threshold).coerceIn(0f, 1f)
+    val iconProgress = (swipeOffset / threshold).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
@@ -95,29 +91,25 @@ fun MessageBubble(
                 orientation = Orientation.Horizontal,
                 state = rememberDraggableState { delta ->
                     // Only right swipes (positive delta), cap at 1.3× threshold
-                    if (delta > 0 || swipeOffset.value > 0) {
-                        scope.launch {
-                            val next = (swipeOffset.value + delta).coerceIn(0f, threshold * 1.3f)
-                            swipeOffset.snapTo(next)
-                            if (next >= threshold && !triggered) {
-                                triggered = true
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onSwipeReply(message)
-                            }
+                    if (delta > 0 || swipeOffset > 0) {
+                        val next = (swipeOffset + delta).coerceIn(0f, threshold * 1.3f)
+                        swipeOffset = next
+                        if (next >= threshold && !triggered) {
+                            triggered = true
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onSwipeReply(message)
                         }
                     }
                 },
                 onDragStopped = {
-                    scope.launch {
-                        triggered = false
-                        swipeOffset.animateTo(
-                            targetValue   = 0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness    = Spring.StiffnessMedium,
-                            ),
-                        )
-                    }
+                    triggered = false
+                    Animatable(swipeOffset).animateTo(
+                        targetValue   = 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness    = Spring.StiffnessMedium,
+                        ),
+                    ) { swipeOffset = value }
                 },
             ),
     ) {
@@ -146,7 +138,7 @@ fun MessageBubble(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationX = swipeOffset.value }
+                .graphicsLayer { translationX = swipeOffset }
                 .padding(
                     start  = if (isOwn) 64.dp else 8.dp,
                     end    = if (isOwn) 8.dp  else 64.dp,

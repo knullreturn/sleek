@@ -18,6 +18,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.sleek.app.data.model.Message
@@ -25,7 +26,6 @@ import com.sleek.app.ui.chat.components.MessageBubble
 import com.sleek.app.ui.chat.components.TypingIndicator
 import com.sleek.app.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * Renders the message list area: loading skeleton, date-grouped LazyColumn,
@@ -73,7 +73,6 @@ internal fun MessageList(
         return
     }
 
-    val scope   = rememberCoroutineScope()
     val context = LocalContext.current
 
     // ── Low-end device detection (disable rubber band on low-RAM devices) ─────
@@ -82,12 +81,10 @@ internal fun MessageList(
     }
 
     // ── Rubber band overscroll ─────────────────────────────────────────────────
-    val maxOverscrollPx = with(androidx.compose.ui.platform.LocalDensity.provides(
-        androidx.compose.ui.platform.LocalDensity.current
-    ).value) { 40.dp.toPx() }
+    val maxOverscrollPx = with(LocalDensity.current) { 40.dp.toPx() }
 
-    val overscrollOffset = remember { Animatable(0f) }
-    val overscrollConnection = remember(isLowRam) {
+    var overscrollOffset by remember { mutableFloatStateOf(0f) }
+    val overscrollConnection = remember(isLowRam, maxOverscrollPx) {
         if (isLowRam) null
         else object : NestedScrollConnection {
             override fun onPostScroll(
@@ -96,23 +93,20 @@ internal fun MessageList(
                 source:   NestedScrollSource,
             ): Offset {
                 if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    scope.launch {
-                        val resistance = available.y * 0.28f
-                        val clamped = (overscrollOffset.value + resistance)
-                            .coerceIn(-maxOverscrollPx, maxOverscrollPx)
-                        overscrollOffset.snapTo(clamped)
-                    }
+                    val resistance = available.y * 0.28f
+                    overscrollOffset = (overscrollOffset + resistance)
+                        .coerceIn(-maxOverscrollPx, maxOverscrollPx)
                 }
                 return Offset.Zero
             }
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                overscrollOffset.animateTo(
+                Animatable(overscrollOffset).animateTo(
                     targetValue   = 0f,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioHighBouncy,
                         stiffness    = Spring.StiffnessMedium,
                     ),
-                )
+                ) { overscrollOffset = value }
                 return super.onPostFling(consumed, available)
             }
         }
@@ -152,7 +146,7 @@ internal fun MessageList(
             state          = listState,
             modifier       = Modifier
                 .fillMaxSize()
-                .graphicsLayer { translationY = overscrollOffset.value },
+                .graphicsLayer { translationY = overscrollOffset },
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             grouped.forEach { (dateLabel, msgs) ->
@@ -197,14 +191,6 @@ internal fun MessageList(
                         onLongPress       = { onLongPress(msg) },
                         onReplyTap        = { onReplyTap(it) },
                         onSwipeReply      = { onSwipeReply(it) },
-                        modifier          = Modifier.animateItem(
-                            fadeInSpec    = tween(durationMillis = 180, easing = FastOutSlowInEasing),
-                            placementSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness    = Spring.StiffnessMediumLow,
-                            ),
-                            fadeOutSpec   = tween(durationMillis = 100),
-                        ),
                     )
                 }
             }

@@ -34,3 +34,9 @@ internal fun findScrollIndex(grouped: List<Pair<String, List<Message>>>, targetI
     }
     return -1
 }
+
+/** Number of LazyColumn items produced by message groups plus optional typing row. */
+internal fun chatLazyItemCount(
+    grouped: List<Pair<String, List<Message>>>,
+    hasTyping: Boolean = false,
+): Int = grouped.sumOf { (_, msgs) -> 1 + msgs.size } + if (hasTyping) 1 else 0
