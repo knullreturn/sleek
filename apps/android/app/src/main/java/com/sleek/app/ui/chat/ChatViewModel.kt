@@ -38,6 +38,9 @@ class ChatViewModel @Inject constructor(
 
     val myUserId: Flow<String?> = tokenDataStore.userId
 
+    /** Cached once at init — prevents spawning a new coroutine per message emission */
+    private var cachedMyId: String? = null
+
     /** Exposed to ChatScreen so it can show the 💤 sleep mode tag in the header */
     val sleepModeEnabled: StateFlow<Boolean> = settingsDataStore.sleepModeEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -48,51 +51,47 @@ class ChatViewModel @Inject constructor(
 
     fun init(chatId: String) {
         if (currentChatId == chatId) return
-        // Mark this chat as active → suppresses its notifications
         NotificationHelper.activeChatId = chatId
         currentChatId = chatId
         socketManager.joinChat(chatId)
-        observeSocket()
 
-        // ── If Room likely has data, skip skeleton immediately ────────────────
         val likelyHasData = messageRepository.mightHaveData(chatId)
-        if (likelyHasData) {
-            _state.update { it.copy(isLoading = false) }
-        }
+        if (likelyHasData) _state.update { it.copy(isLoading = false) }
 
-        // ── 1. Subscribe to Room Flow — UI updates automatically ──────────────
-        messageRepository.observeMessages(chatId)
-            .onEach { messages ->
-                val myId = tokenDataStore.userId.first()
-                val peer = messages.firstOrNull { it.senderId != myId }?.sender
-                _state.update { s ->
-                    s.copy(
-                        messages  = messages,
-                        // Turn off loading as soon as we get any data from Room
-                        isLoading = if (messages.isNotEmpty()) false else s.isLoading,
-                        peer      = peer ?: s.peer,
-                    )
-                }
-            }
-            .launchIn(viewModelScope)
-
-        // ── 2. Network sync ───────────────────────────────────────────────────
         viewModelScope.launch {
-            val myId = tokenDataStore.userId.first()
+            // ── Cache userId ONCE — zero suspend calls per message emission ──────
+            if (cachedMyId == null) cachedMyId = tokenDataStore.userId.first()
+            val myId = cachedMyId
+
+            // 1. Room Flow → UI
+            messageRepository.observeMessages(chatId)
+                .onEach { messages ->
+                    val peer = messages.firstOrNull { it.senderId != myId }?.sender
+                    _state.update { s ->
+                        s.copy(
+                            messages  = messages,
+                            isLoading = if (messages.isNotEmpty()) false else s.isLoading,
+                            peer      = peer ?: s.peer,
+                        )
+                    }
+                }
+                .launchIn(viewModelScope)
+
+            // 2. Network sync
             if (!messageRepository.hasMessages(chatId)) {
-                // Absolute first open — skeleton until fetch completes
                 _state.update { it.copy(isLoading = true) }
                 fetchAndSave(chatId, myId, silent = false)
             } else {
-                // Has local data — sync silently, no UI disruption
                 fetchAndSave(chatId, myId, silent = true)
             }
+
+            observeSocket(myId)
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        NotificationHelper.activeChatId = null  // resume notifications when chat is left
+        NotificationHelper.activeChatId = null
         socketManager.leaveChat(currentChatId)
     }
 
@@ -101,9 +100,7 @@ class ChatViewModel @Inject constructor(
             val res = apiService.getMessages(chatId)
             if (res.isSuccessful) {
                 val msgs = res.body()?.messages ?: emptyList()
-                // Write to Room → the Flow above auto-updates the UI
                 messageRepository.saveAll(chatId, msgs)
-                // isLoading → false (Room Flow will set messages, but we ensure loading stops)
                 if (!silent) _state.update { it.copy(isLoading = false) }
             } else if (!silent) {
                 _state.update { it.copy(isLoading = false) }
@@ -113,14 +110,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    private fun observeSocket() {
+    private fun observeSocket(myId: String?) {
         viewModelScope.launch {
-            val myId = tokenDataStore.userId.first()
             socketManager.events.collect { event ->
                 when (event) {
                     is SocketEvent.MessageReceived -> {
                         if (event.message.chatId == currentChatId) {
-                            // Write to Room → Flow auto-emits new list
                             messageRepository.upsert(event.message)
                             _state.update { s ->
                                 s.copy(
@@ -140,10 +135,7 @@ class ChatViewModel @Inject constructor(
                             is SocketEvent.MessageUnpinned -> event.message
                             else                           -> return@collect
                         }
-                        if (msg.chatId == currentChatId) {
-                            // Upsert → Room → Flow auto-updates UI
-                            messageRepository.upsert(msg)
-                        }
+                        if (msg.chatId == currentChatId) messageRepository.upsert(msg)
                     }
                     is SocketEvent.TypingChanged -> {
                         if (event.chatId == currentChatId && event.userId != myId) {

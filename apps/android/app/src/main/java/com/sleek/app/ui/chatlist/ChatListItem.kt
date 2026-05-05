@@ -80,8 +80,11 @@ internal fun ChatListItem(
                     verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
+                    val timeText = remember(chat.lastMessage?.createdAt) {
+                        chat.lastMessage?.createdAt?.let { formatChatTime(it) } ?: ""
+                    }
                     Text(
-                        text     = chat.lastMessage?.createdAt?.let { formatChatTime(it) } ?: "",
+                        text     = timeText,
                         style    = MaterialTheme.typography.labelSmall.copy(
                             color = if (hasUnread) Accent else AppTheme.colors.textMuted,
                         ),

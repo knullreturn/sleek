@@ -58,40 +58,51 @@ fun ChatScreen(
     var highlightId  by remember { mutableStateOf<String?>(null) }
 
     // Hoisted so onReplyTap can find scroll indices
-    val grouped        = remember(state.messages) { groupByDate(state.messages) }
-    val peerHasReplied = remember(state.messages) { state.messages.lastOrNull()?.senderId != myId }
+    val grouped        by remember { derivedStateOf { groupByDate(state.messages) } }
+    val peerHasReplied by remember { derivedStateOf { state.messages.lastOrNull()?.senderId != myId } }
 
-    // ── Scroll logic ──────────────────────────────────────────────────────────
+    // ── Scroll logic ─────────────────────────────────────────────────────────
     val initialScrollDone = remember { mutableStateOf(false) }
+    val prevMsgCount      = remember { mutableStateOf(0) }
 
+    // Initial scroll — instant, once messages first load
     LaunchedEffect(state.messages.size) {
-        if (initialScrollDone.value && state.messages.isNotEmpty())
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
-    }
-
-    // Delay LazyColumn render until slide animation finishes (zero jank)
-    var contentVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(300); contentVisible = true }
-
-    LaunchedEffect(contentVisible) {
-        if (contentVisible && state.messages.isNotEmpty()) {
-            listState.scrollToItem(state.messages.size - 1)
+        val total = listState.layoutInfo.totalItemsCount
+        if (!initialScrollDone.value && state.messages.isNotEmpty()) {
+            listState.scrollToItem(maxOf(0, total - 1))
             initialScrollDone.value = true
+            prevMsgCount.value = state.messages.size
+            return@LaunchedEffect
+        }
+        // New message arrived
+        if (initialScrollDone.value && state.messages.size > prevMsgCount.value) {
+            val lastMsg = state.messages.lastOrNull()
+            val isOwnMessage = lastMsg?.senderId == myId
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val isNearBottom = total - lastVisible <= 4
+            if (isOwnMessage || isNearBottom) {
+                // Instant scroll — no animation competing with layout
+                listState.scrollToItem(maxOf(0, total - 1))
+            }
+            prevMsgCount.value = state.messages.size
         }
     }
+
+    // No artificial delay — show content immediately
+    val contentVisible = !state.isLoading || state.messages.isNotEmpty()
 
     val density   = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     LaunchedEffect(imeBottom) {
         if (imeBottom > 0 && state.messages.isNotEmpty()) {
             delay(50)
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+            listState.scrollToItem(maxOf(0, listState.layoutInfo.totalItemsCount - 1))
         }
     }
 
     LaunchedEffect(state.typingUsers.isNotEmpty()) {
         if (state.typingUsers.isNotEmpty())
-            listState.animateScrollToItem(listState.layoutInfo.totalItemsCount - 1)
+            listState.scrollToItem(maxOf(0, listState.layoutInfo.totalItemsCount - 1))
     }
 
     // ── Context menu ──────────────────────────────────────────────────────────

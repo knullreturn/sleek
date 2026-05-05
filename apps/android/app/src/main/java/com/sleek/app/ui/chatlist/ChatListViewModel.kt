@@ -193,18 +193,17 @@ class ChatListViewModel @Inject constructor(
                         }
                     }
                     is SocketEvent.NewChat -> {
-                        // Server emitted this because we were joined to a room we weren't in
-                        // (first message from someone new) — add the chat instantly
                         try {
-                            val chat = com.google.gson.Gson().fromJson(
-                                event.chatJson,
-                                com.sleek.app.data.model.Chat::class.java,
-                            )
+                            val chat = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                com.google.gson.Gson().fromJson(
+                                    event.chatJson,
+                                    com.sleek.app.data.model.Chat::class.java,
+                                )
+                            }
                             if (_chats.value.none { it.id == chat.id }) {
                                 _chats.update { listOf(chat) + it }
                             }
                         } catch (_: Exception) {
-                            // Fallback: full refresh if parse fails
                             loadChats()
                         }
                     }

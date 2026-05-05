@@ -139,7 +139,7 @@ fun MessageBubble(
                                 ),
                             )
                         } else {
-                            val timeStr   = formatBubbleTime(message.createdAt)
+                            val timeStr   = remember(message.createdAt) { formatBubbleTime(message.createdAt) }
                             val timeColor by animateColorAsState(
                                 targetValue   = if (isSeen) SeenGreen
                                                 else if (isOwn) Color.White.copy(alpha = 0.45f)
