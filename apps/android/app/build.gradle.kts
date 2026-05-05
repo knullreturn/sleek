@@ -56,11 +56,13 @@ android {
                 "proguard-rules.pro"
             )
         }
-        // Profile build: release-quality code + debuggable for profiling tools
+        // Profile build: release-quality code + debuggable for profiling tools.
+        // isMinifyEnabled = false because debuggable overrides R8 anyway.
         create("profile") {
             initWith(buildTypes.getByName("release"))
-            isDebuggable       = true
-            signingConfig      = signingConfigs.getByName("debug")
+            isDebuggable    = true
+            isMinifyEnabled = false
+            signingConfig   = signingConfigs.getByName("debug")
         }
     }
 
