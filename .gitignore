@@ -13,3 +13,8 @@ apps/server/prisma/migrations/
 apps/android/app/google-services.json
 # Release keystore â€” injected from GitHub Secret during CI/CD, never commit
 sleek-release.keystore
+
+# Signing credentials — never commit
+keystore.properties
+*.keystore
+*.jks

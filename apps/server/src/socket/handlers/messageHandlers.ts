@@ -103,7 +103,7 @@ export function registerMessageHandlers(
   // ── edit_message ────────────────────────────────────────────────────────────
   socket.on('edit_message', async (payload: { messageId: string; chatId: string; newContent: string }) => {
     try {
-      const { messageId, chatId, newContent } = payload;
+      const { messageId, newContent } = payload;
       const trimmed = newContent?.trim();
       if (!trimmed)              return;
       if (trimmed.length > 4000) return socket.emit('error', { message: 'Message too long' });
@@ -113,12 +113,19 @@ export function registerMessageHandlers(
       if (existing.senderId !== socket.userId) return socket.emit('error', { message: 'Not your message' });
       if (existing.deletedAt)                 return socket.emit('error', { message: 'Cannot edit a deleted message' });
 
+      // ✅ Security: verify caller is a member of the message's REAL chat (not client-supplied chatId)
+      const realChatId = existing.chatId;
+      const member = await prisma.chatMember.findUnique({
+        where: { chatId_userId: { chatId: realChatId, userId: socket.userId } },
+      });
+      if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
+
       const updated = await prisma.message.update({
         where:   { id: messageId },
         data:    { content: trimmed, edited: true, originalContent: existing.originalContent ?? existing.content },
         include: messageInclude,
       });
-      io.to(`chat:${chatId}`).emit('message_edited', { message: serializeMessage(updated) });
+      io.to(`chat:${realChatId}`).emit('message_edited', { message: serializeMessage(updated) });
     } catch (err) {
       console.error('edit_message error:', err);
       socket.emit('error', { message: 'Failed to edit message' });
@@ -128,18 +135,25 @@ export function registerMessageHandlers(
   // ── delete_message (soft) ───────────────────────────────────────────────────
   socket.on('delete_message', async (payload: { messageId: string; chatId: string }) => {
     try {
-      const { messageId, chatId } = payload;
+      const { messageId } = payload;
       const existing = await prisma.message.findUnique({ where: { id: messageId } });
       if (!existing)                          return socket.emit('error', { message: 'Message not found' });
       if (existing.senderId !== socket.userId) return socket.emit('error', { message: 'Not your message' });
       if (existing.deletedAt)                 return; // idempotent
+
+      // ✅ Security: verify caller is a member of the message's REAL chat
+      const realChatId = existing.chatId;
+      const member = await prisma.chatMember.findUnique({
+        where: { chatId_userId: { chatId: realChatId, userId: socket.userId } },
+      });
+      if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
 
       const updated = await prisma.message.update({
         where:   { id: messageId },
         data:    { deletedAt: new Date(), pinned: false, pinnedAt: null, pinnedById: null },
         include: messageInclude,
       });
-      io.to(`chat:${chatId}`).emit('message_deleted', { message: serializeMessage(updated) });
+      io.to(`chat:${realChatId}`).emit('message_deleted', { message: serializeMessage(updated) });
     } catch (err) {
       console.error('delete_message error:', err);
       socket.emit('error', { message: 'Failed to delete message' });
@@ -149,8 +163,12 @@ export function registerMessageHandlers(
   // ── pin_message ─────────────────────────────────────────────────────────────
   socket.on('pin_message', async (payload: { messageId: string; chatId: string }) => {
     try {
-      const { messageId, chatId } = payload;
-      const member = await prisma.chatMember.findUnique({ where: { chatId_userId: { chatId, userId: socket.userId } } });
+      const { messageId } = payload;
+      // ✅ Security: look up the message first, verify membership in its REAL chatId
+      const existing = await prisma.message.findUnique({ where: { id: messageId } });
+      if (!existing) return socket.emit('error', { message: 'Message not found' });
+      const realChatId = existing.chatId;
+      const member = await prisma.chatMember.findUnique({ where: { chatId_userId: { chatId: realChatId, userId: socket.userId } } });
       if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
 
       const updated = await prisma.message.update({
@@ -158,7 +176,7 @@ export function registerMessageHandlers(
         data:    { pinned: true, pinnedAt: new Date(), pinnedById: socket.userId },
         include: messageInclude,
       });
-      io.to(`chat:${chatId}`).emit('message_pinned', { message: serializeMessage(updated) });
+      io.to(`chat:${realChatId}`).emit('message_pinned', { message: serializeMessage(updated) });
     } catch (err) {
       console.error('pin_message error:', err);
       socket.emit('error', { message: 'Failed to pin message' });
@@ -168,8 +186,12 @@ export function registerMessageHandlers(
   // ── unpin_message ───────────────────────────────────────────────────────────
   socket.on('unpin_message', async (payload: { messageId: string; chatId: string }) => {
     try {
-      const { messageId, chatId } = payload;
-      const member = await prisma.chatMember.findUnique({ where: { chatId_userId: { chatId, userId: socket.userId } } });
+      const { messageId } = payload;
+      // ✅ Security: look up the message first, verify membership in its REAL chatId
+      const existing = await prisma.message.findUnique({ where: { id: messageId } });
+      if (!existing) return socket.emit('error', { message: 'Message not found' });
+      const realChatId = existing.chatId;
+      const member = await prisma.chatMember.findUnique({ where: { chatId_userId: { chatId: realChatId, userId: socket.userId } } });
       if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
 
       const updated = await prisma.message.update({
@@ -177,7 +199,7 @@ export function registerMessageHandlers(
         data:    { pinned: false, pinnedAt: null, pinnedById: null },
         include: messageInclude,
       });
-      io.to(`chat:${chatId}`).emit('message_unpinned', { message: serializeMessage(updated) });
+      io.to(`chat:${realChatId}`).emit('message_unpinned', { message: serializeMessage(updated) });
     } catch (err) {
       console.error('unpin_message error:', err);
       socket.emit('error', { message: 'Failed to unpin message' });

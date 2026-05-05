@@ -20,8 +20,18 @@ async function bootstrap() {
 
   // ── Plugins ─────────────────────────────────────────────────────────────────
   await app.register(helmet, { contentSecurityPolicy: false });
+  // ✅ Security: CORS fails closed — if FRONTEND_URL is missing in production, refuse all origins.
+  // In development, allow all origins for convenience.
+  const corsOrigin = (() => {
+    if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.split(',');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FRONTEND_URL must be set in production — refusing to start with open CORS');
+    }
+    return true; // dev only
+  })();
+
   await app.register(cors, {
-    origin: process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',') : true,
+    origin:      corsOrigin,
     credentials: true,
   });
 

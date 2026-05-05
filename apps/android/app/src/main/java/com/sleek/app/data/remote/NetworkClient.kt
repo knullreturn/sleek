@@ -20,10 +20,6 @@ class NetworkClient @Inject constructor(
     val apiService: ApiService by lazy { buildRetrofit().create(ApiService::class.java) }
 
     private fun buildRetrofit(): Retrofit {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
-
         val authInterceptor = Interceptor { chain ->
             val token = runBlocking { tokenDataStore.token.first() }
             val request = if (token != null) {
@@ -36,7 +32,17 @@ class NetworkClient @Inject constructor(
 
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
-            .addInterceptor(logging)
+            .apply {
+                // ✅ Security: only log in debug builds; never log Authorization headers
+                if (BuildConfig.DEBUG) {
+                    val logging = HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                        redactHeader("Authorization")
+                        redactHeader("Cookie")
+                    }
+                    addInterceptor(logging)
+                }
+            }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()

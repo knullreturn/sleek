@@ -9,22 +9,52 @@ export function registerPresenceHandlers(
   prisma: PrismaClient,
 ) {
   // ── Typing indicator ────────────────────────────────────────────────────────
-  socket.on('typing', (payload: { chatId: string; isTyping: boolean }) => {
-    socket.to(`chat:${payload.chatId}`).emit('typing', {
-      chatId:   payload.chatId,
-      userId:   socket.userId,
-      username: socket.username,
-      isTyping: payload.isTyping,
-    });
+  // ✅ Security: verify caller is a member of the supplied chatId before broadcasting
+  socket.on('typing', async (payload: { chatId: string; isTyping: boolean }) => {
+    try {
+      const { chatId, isTyping } = payload;
+      const member = await prisma.chatMember.findUnique({
+        where: { chatId_userId: { chatId, userId: socket.userId } },
+      });
+      if (!member) return; // silently ignore — don't reveal chat existence
+      socket.to(`chat:${chatId}`).emit('typing', {
+        chatId,
+        userId:   socket.userId,
+        username: socket.username,
+        isTyping,
+      });
+    } catch {
+      // swallow — typing errors must never affect the socket connection
+    }
   });
 
   // ── Read receipts ───────────────────────────────────────────────────────────
-  socket.on('mark_seen', (payload: { chatId: string; messageId: string }) => {
-    socket.to(`chat:${payload.chatId}`).emit('message_seen', {
-      messageId: payload.messageId,
-      chatId:    payload.chatId,
-      userId:    socket.userId,
-    });
+  // ✅ Security: verify caller is a member of the chat and owns the message before broadcasting
+  socket.on('mark_seen', async (payload: { chatId: string; messageId: string }) => {
+    try {
+      const { chatId, messageId } = payload;
+
+      // Verify membership in the supplied chatId
+      const member = await prisma.chatMember.findUnique({
+        where: { chatId_userId: { chatId, userId: socket.userId } },
+      });
+      if (!member) return;
+
+      // Verify the message actually belongs to this chat
+      const message = await prisma.message.findFirst({
+        where: { id: messageId, chatId },
+        select: { id: true },
+      });
+      if (!message) return;
+
+      socket.to(`chat:${chatId}`).emit('message_seen', {
+        messageId,
+        chatId,
+        userId: socket.userId,
+      });
+    } catch {
+      // swallow
+    }
   });
 }
 

@@ -19,7 +19,10 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): SleekDatabase =
         Room.databaseBuilder(context, SleekDatabase::class.java, "sleek.db")
-            .fallbackToDestructiveMigration()   // simple strategy for v1
+            // ⚠️ Write a real Migration before bumping the schema version.
+            // fallbackToDestructiveMigration() would silently wipe all cached messages on update.
+            // We only allow destructive migration on DOWNGRADE (e.g., dev rollback) — not upgrade.
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
 
     @Provides

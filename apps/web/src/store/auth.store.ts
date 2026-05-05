@@ -28,6 +28,15 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => set({ token: null, user: null }),
       isAuthenticated: () => !!get().token && !!get().user,
     }),
-    { name: 'sleek-auth-v2' }   // v2 forces everyone to re-login after schema change
+    {
+      name: 'sleek-auth-v2',
+      // ✅ Security: sessionStorage clears on tab/browser close — limits XSS token theft window.
+      // Trade-off: users must re-login per browser session (acceptable for a chat app).
+      storage: {
+        getItem:    (k) => { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : null; },
+        setItem:    (k, v) => sessionStorage.setItem(k, JSON.stringify(v)),
+        removeItem: (k) => sessionStorage.removeItem(k),
+      },
+    }
   )
 );

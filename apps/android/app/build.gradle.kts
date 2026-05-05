@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,12 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
+}
+
+// ✅ Security: load signing credentials from keystore.properties (never commit that file)
+val keystoreProps = Properties().also { props ->
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) props.load(f.inputStream())
 }
 
 android {
@@ -28,10 +36,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile     = file("${rootProject.projectDir}/sleek-release.keystore")
-            storePassword = "sleek2024secure"
-            keyAlias      = "sleek"
-            keyPassword   = "sleek2024secure"
+            storeFile     = file(keystoreProps.getProperty("storeFile",     "${rootProject.projectDir}/sleek-release.keystore"))
+            storePassword = keystoreProps.getProperty("storePassword", "")
+            keyAlias      = keystoreProps.getProperty("keyAlias",      "sleek")
+            keyPassword   = keystoreProps.getProperty("keyPassword",   "")
         }
     }
 
