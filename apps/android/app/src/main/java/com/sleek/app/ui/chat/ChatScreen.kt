@@ -61,28 +61,38 @@ fun ChatScreen(
     val grouped        = state.grouped
     val peerHasReplied = state.peerHasReplied
 
+    // ── Content sequencing — slide in page first, THEN render messages ────────
+    // Without this, the page slide animation and full LazyColumn composition
+    // compete for the same frames → both look laggy.
+    var contentVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(290) // wait for MainScreen slide-in animation (280ms) to finish
+        contentVisible = true
+    }
+
     // ── Scroll logic ──────────────────────────────────────────────────────────
 
-    // Initial load — jump to bottom instantly, no animation
-    LaunchedEffect(state.messages.isNotEmpty()) {
-        if (state.messages.isNotEmpty())
+    // Initial load — jump to bottom instantly once content becomes visible
+    LaunchedEffect(contentVisible, state.messages.isNotEmpty()) {
+        if (contentVisible && state.messages.isNotEmpty())
             listState.scrollToItem(maxOf(0, state.messages.size - 1))
     }
 
-    // New message — only animate if user is near bottom OR it's their own message
+    // New message — only animate if near bottom OR it's the user's own message
     LaunchedEffect(state.messages.size) {
+        if (!contentVisible) return@LaunchedEffect
         val msgs = state.messages
         if (msgs.isEmpty()) return@LaunchedEffect
-        val lastMsg       = msgs.last()
-        val totalItems    = listState.layoutInfo.totalItemsCount
-        val lastVisible   = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-        val isNearBottom  = lastVisible >= totalItems - 5
-        val isMine        = lastMsg.senderId == myId
+        val lastMsg      = msgs.last()
+        val totalItems   = listState.layoutInfo.totalItemsCount
+        val lastVisible  = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+        val isNearBottom = lastVisible >= totalItems - 5
+        val isMine       = lastMsg.senderId == myId
         if (isMine || isNearBottom)
             listState.animateScrollToItem(totalItems)
     }
 
-    // Keyboard opens → scroll to keep messages visible
+    // Keyboard opens → scroll to keep input visible
     val density   = LocalDensity.current
     val imeBottom = WindowInsets.ime.getBottom(density)
     LaunchedEffect(imeBottom) {
@@ -92,7 +102,7 @@ fun ChatScreen(
         }
     }
 
-    // Typing indicator appears → scroll to show it
+    // Typing indicator → scroll to show it
     LaunchedEffect(state.typingUsers.isNotEmpty()) {
         if (state.typingUsers.isNotEmpty())
             listState.animateScrollToItem(listState.layoutInfo.totalItemsCount)
@@ -190,29 +200,34 @@ fun ChatScreen(
         },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            MessageList(
-                grouped              = grouped,
-                myId                 = myId,
-                peerHasReplied       = peerHasReplied,
-                seenUpToId           = state.seenUpToId,
-                isLoading            = state.isLoading,
-                listState            = listState,
-                highlightedMessageId = highlightId,
-                typingUsers          = state.typingUsers,
-                onLongPress          = { contextMsg = it },
-                onReplyTap           = { replyMsgId ->
-                    scope.launch {
-                        val idx = findScrollIndex(grouped, replyMsgId)
-                        if (idx >= 0) {
-                            listState.animateScrollToItem(idx)
-                            highlightId = replyMsgId
-                            delay(1600)
-                            highlightId = null
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter   = fadeIn(tween(200, easing = LinearOutSlowInEasing)),
+            ) {
+                MessageList(
+                    grouped              = grouped,
+                    myId                 = myId,
+                    peerHasReplied       = peerHasReplied,
+                    seenUpToId           = state.seenUpToId,
+                    isLoading            = state.isLoading,
+                    listState            = listState,
+                    highlightedMessageId = highlightId,
+                    typingUsers          = state.typingUsers,
+                    onLongPress          = { contextMsg = it },
+                    onReplyTap           = { replyMsgId ->
+                        scope.launch {
+                            val idx = findScrollIndex(grouped, replyMsgId)
+                            if (idx >= 0) {
+                                listState.animateScrollToItem(idx)
+                                highlightId = replyMsgId
+                                delay(1600)
+                                highlightId = null
+                            }
                         }
-                    }
-                },
-                onSwipeReply         = { replyingTo = it },
-            )
+                    },
+                    onSwipeReply         = { replyingTo = it },
+                )
+            }
         }
     }
 }
