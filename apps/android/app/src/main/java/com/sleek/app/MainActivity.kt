@@ -11,11 +11,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.sleek.app.data.local.SettingsDataStore
 import com.sleek.app.data.local.TokenDataStore
 import com.sleek.app.data.remote.SocketManager
+import com.sleek.app.notification.NotificationHelper
 import com.sleek.app.ui.navigation.NavGraph
 import com.sleek.app.ui.navigation.Screen
 import com.sleek.app.ui.theme.SleekTheme
@@ -48,17 +51,37 @@ class MainActivity : ComponentActivity() {
 
         // ── Auth token — read async, hold splash until done ───────────────────
         // Fix: was runBlocking which blocked the main thread on every cold start.
-        // Now we hold the splash screen while a coroutine reads the token off-thread,
-        // then dismiss splash and render the first frame with the correct route.
-        var startDestination: String? = null   // null = still loading
+        var startDestination: String? = null
         var resolvedToken:    String? = null
 
         splash.setKeepOnScreenCondition { startDestination == null }
 
         lifecycleScope.launch {
-            resolvedToken    = tokenDataStore.token.first()  // fast DataStore read, not main thread
+            resolvedToken    = tokenDataStore.token.first()
             startDestination = if (resolvedToken != null) Screen.ChatList.route else Screen.Login.route
         }
+
+        // ── Fix: reconnect on resume + clear active chat when backgrounded ────
+        // DefaultLifecycleObserver fires for every start/stop of the activity.
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                // App came to foreground (or first open) — ensure socket is alive.
+                // If the socket died while we were in background (network change,
+                // server restart, phone sleep), this forces a fresh reconnect.
+                lifecycleScope.launch {
+                    val token = tokenDataStore.token.first() ?: return@launch
+                    socketManager.reconnectIfNeeded(token)
+                }
+            }
+
+            override fun onStop(owner: LifecycleOwner) {
+                // App went to background. Clear the active chat so FCM notifications
+                // are NOT suppressed while the app is invisible.
+                // Previously this was only cleared in ChatViewModel.onCleared() which
+                // only fires when the ViewModel is truly destroyed, not on backgrounding.
+                NotificationHelper.activeChatId = null
+            }
+        })
 
         // Request notification permission on Android 13+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -72,10 +95,8 @@ class MainActivity : ComponentActivity() {
         val deepChatName = intent.getStringExtra(EXTRA_CHAT_NAME)
 
         setContent {
-            // Collect theme preference — default dark while loading
             val isDark by settingsDataStore.isDarkTheme.collectAsState(initial = true)
-            // Wait for token read before rendering nav graph
-            val start = startDestination
+            val start  = startDestination
 
             SleekTheme(darkTheme = isDark) {
                 if (start != null) {
@@ -87,9 +108,8 @@ class MainActivity : ComponentActivity() {
                         deepChatName     = deepChatName,
                     )
 
-                    // Fix: socket connects AFTER first frame is drawn, not before setContent.
-                    // Staggering by 300ms means the first navigation animation gets the full
-                    // GPU budget instead of competing with network + socket handshake.
+                    // Fix: socket connects AFTER first frame, not before setContent.
+                    // Frees GPU budget for the opening navigation animation.
                     LaunchedEffect(Unit) {
                         delay(300)
                         resolvedToken?.let { socketManager.connect(it) }

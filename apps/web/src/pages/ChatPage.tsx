@@ -15,16 +15,18 @@ import { MessageSquare, Search, MoreHorizontal, PanelLeftClose, PanelLeftOpen, P
 export function ChatPage() {
   const activeChatId = useChatStore((s) => s.activeChatId);
   const chats = useChatStore((s) => s.chats);
-  const onlineUsers = useChatStore((s) => s.onlineUsers);
+  const onlineUsers  = useChatStore((s) => s.onlineUsers);
+  const sleepingUsers = useChatStore((s) => s.sleepingUsers);
   const searchOpen = useUIStore((s) => s.searchOpen);
   const chatListOpen = useUIStore((s) => s.chatListOpen);
   const setSearchOpen = useUIStore((s) => s.setSearchOpen);
   const toggleChatList = useUIStore((s) => s.toggleChatList);
   const user = useAuthStore((s) => s.user);
 
-  const activeChat = chats.find((c) => c.id === activeChatId);
-  const peer = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
-  const isOnline = peer ? onlineUsers.has(peer.id) : false;
+  const activeChat  = chats.find((c) => c.id === activeChatId);
+  const peer        = activeChat ? getDmPeer(activeChat, user?.id || '') : null;
+  const isOnline    = peer ? onlineUsers.has(peer.id) : false;
+  const isSleeping  = peer ? sleepingUsers.has(peer.id) : false;
 
   // Count pinned messages — selector returns a number (primitive) to avoid
   // infinite re-renders caused by new array references on every selector call
@@ -81,13 +83,18 @@ export function ChatPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           {peer ? (
             <>
-              <Avatar src={peer.avatarUrl} username={peer.username} size="sm" online={isOnline} />
+              <Avatar src={peer.avatarUrl} username={peer.username} size="sm" online={isOnline && !isSleeping} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                   {peer.username}
                 </div>
-                <div style={{ fontSize: 11, color: isOnline ? 'var(--online)' : 'var(--text-muted)', lineHeight: 1, marginTop: 4 }}>
-                  {isOnline ? 'Online' : 'Offline'}
+                <div style={{
+                  fontSize: 11,
+                  color: isSleeping ? 'var(--accent, #7c6af7)' : isOnline ? 'var(--online)' : 'var(--text-muted)',
+                  lineHeight: 1,
+                  marginTop: 4,
+                }}>
+                  {isSleeping ? '💤 Do Not Disturb' : isOnline ? '● Online' : 'Offline'}
                 </div>
               </div>
               <button

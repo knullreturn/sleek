@@ -58,12 +58,12 @@ export function registerPresenceHandlers(
   });
 }
 
-/** Broadcast online/offline status to all rooms this user is a member of. */
+/** Broadcast online/offline/sleeping status to all rooms this user is a member of. */
 export async function broadcastPresence(
   io:     Server,
   prisma: PrismaClient,
   userId: string,
-  status: 'online' | 'offline',
+  status: 'online' | 'offline' | 'sleeping',
 ) {
   const memberships = await prisma.chatMember.findMany({ where: { userId }, select: { chatId: true } });
   for (const { chatId } of memberships) {

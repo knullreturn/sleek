@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/auth.store';
 import { useChatStore } from '../store/chat.store';
@@ -11,6 +11,10 @@ export function useSocket() {
   const activeChatRef = useRef(activeChatId);
   activeChatRef.current = activeChatId;
 
+  // Keep a ref to the token so reconnect handlers can access the latest value
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   useEffect(() => {
     if (!token) return;
 
@@ -19,43 +23,44 @@ export function useSocket() {
     socket = io(API_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
+      // Fix: was 5 — socket died permanently after 5 failures.
+      // Infinity = reconnects forever with exponential back-off.
+      reconnectionAttempts: Infinity,
+      reconnectionDelay:    1000,
+      reconnectionDelayMax: 30000,
     });
 
     socket.on('connect', () => {
-      console.log('ðŸ”Œ Socket connected');
+      console.log('🔌 Socket connected');
       if (activeChatRef.current) {
         socket?.emit('join_chat', activeChatRef.current);
       }
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn('⚠️ Socket disconnected:', reason);
     });
 
     socket.on('receive_message', ({ message }: { message: any }) => {
       const myId  = useAuthStore.getState().user?.id;
       const state = useChatStore.getState();
 
-      // Always add to message store
       state.addMessage(message);
 
-      // Update last message + re-sort chat list (if chat already known)
       const chat = state.chats.find((c) => c.id === message.chatId);
       if (chat) {
         useChatStore.getState().upsertChat({ ...chat, lastMessage: message });
       }
-      // If chat not in list yet, the server will emit new_chat â€” handled below
 
-      // Increment unread for peer messages when that chat isn't open
       if (message.senderId !== myId && message.chatId !== activeChatRef.current) {
         state.incrementUnread(message.chatId);
       }
 
-      // Peer replied â†’ clear â€œseenâ€ green on our previous messages
       if (message.senderId !== myId) {
         state.setSeenUpTo(message.chatId, null);
       }
     });
 
-    // Brand-new chat from someone â€” server emits this when a socket is joined
-    // to a room it wasn't in before (first message from a new person)
     socket.on('new_chat', ({ chat }: { chat: any }) => {
       useChatStore.getState().upsertChat(chat);
     });
@@ -82,10 +87,8 @@ export function useSocket() {
       updateMessage(message.chatId, { id: message.id, deletedAt: message.deletedAt, pinned: false, pinnedAt: null, pinnedBy: null });
     });
 
-    // Read receipt: peer has seen our message up to messageId
     socket.on('message_seen', ({ messageId, chatId, userId }: { messageId: string; chatId: string; userId: string }) => {
       const myId = useAuthStore.getState().user?.id;
-      // Only react to other users' seen events, not our own echo
       if (userId !== myId) {
         setSeenUpTo(chatId, messageId);
       }
@@ -95,15 +98,45 @@ export function useSocket() {
       setTyping(payload.chatId, payload.userId, payload.username, payload.isTyping);
     });
 
-    socket.on('presence', ({ userId, status }: { userId: string; status: 'online' | 'offline' }) => {
-      setUserOnline(userId, status === 'online');
+    socket.on('presence', ({ userId, status }: { userId: string; status: 'online' | 'offline' | 'sleeping' }) => {
+      // 'sleeping' counts as online (reachable) but with DND — pass both flags
+      setUserOnline(userId, status === 'online' || status === 'sleeping', status === 'sleeping');
+    });
+
+    // Fix: consume presence_snapshot with sleep state
+    socket.on('presence_snapshot', ({ onlineUserIds, sleepingUserIds = [] }: { onlineUserIds: string[]; sleepingUserIds?: string[] }) => {
+      const store = useChatStore.getState();
+      for (const uid of onlineUserIds) {
+        store.setUserOnline(uid, true, sleepingUserIds.includes(uid));
+      }
     });
 
     socket.on('connect_error', (err) => {
       console.error('Socket error:', err.message);
     });
 
+    // ── Fix: reconnect when browser tab becomes visible or network comes back ─
+    // Without this, if the socket died while the tab was hidden (phone locked,
+    // tab in background), it may never recover after the tab is shown again.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && socket && !socket.connected) {
+        console.log('🔄 Tab visible — forcing socket reconnect');
+        socket.connect();
+      }
+    };
+    const handleOnline = () => {
+      if (socket && !socket.connected) {
+        console.log('🔄 Network online — forcing socket reconnect');
+        socket.connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
       socket?.disconnect();
       socket = null;
     };
@@ -114,4 +147,18 @@ export function useSocket() {
 
 export function getSocket() {
   return socket;
+}
+
+/**
+ * Fix: safe emit — returns false if socket is not connected.
+ * Use instead of getSocket()?.emit() for sends that must not silently drop.
+ */
+export function safeEmit(event: string, data: any, ack?: (res: any) => void): boolean {
+  if (!socket?.connected) return false;
+  if (ack) {
+    socket.emit(event, data, ack);
+  } else {
+    socket.emit(event, data);
+  }
+  return true;
 }

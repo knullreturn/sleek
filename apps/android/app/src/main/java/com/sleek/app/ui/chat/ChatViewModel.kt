@@ -23,15 +23,17 @@ import javax.inject.Inject
 
 @Immutable
 data class ChatUiState(
-    val messages:       List<Message>                        = emptyList(),
-    val grouped:        MessageGroups                        = MessageGroups(), // pre-computed off UI thread
-    val peerHasReplied: Boolean                             = false,
-    val isLoading:      Boolean                             = true,
-    val typingUsers:    List<String>                        = emptyList(),
-    val seenUpToId:     String?                             = null,
-    val peer:           User?                               = null,
-    val hasMoreMessages: Boolean                            = false,  // true = older messages exist above
-    val isLoadingOlder: Boolean                             = false,  // scroll-up pagination in progress
+    val messages:        List<Message>   = emptyList(),
+    val grouped:         MessageGroups   = MessageGroups(),
+    val peerHasReplied:  Boolean         = false,
+    val isLoading:       Boolean         = true,
+    val typingUsers:     List<String>    = emptyList(),
+    val seenUpToId:      String?         = null,
+    val peer:            User?           = null,
+    val peerOnline:      Boolean         = false,
+    val peerSleeping:    Boolean         = false,   // peer has sleep mode enabled
+    val hasMoreMessages: Boolean         = false,
+    val isLoadingOlder:  Boolean         = false,
 )
 
 @HiltViewModel
@@ -246,6 +248,26 @@ class ChatViewModel @Inject constructor(
                 is SocketEvent.MessageSeen -> {
                     if (event.chatId == currentChatId && event.userId != myId) {
                         _state.update { it.copy(seenUpToId = event.messageId) }
+                    }
+                }
+                is SocketEvent.PresenceChanged -> {
+                    val peerId = _state.value.peer?.id
+                    if (event.userId == peerId) {
+                        _state.update { it.copy(
+                            peerOnline   = event.online,
+                            peerSleeping = event.sleeping,
+                        )}
+                    }
+                }
+                is SocketEvent.PresenceSnapshot -> {
+                    val peerId = _state.value.peer?.id
+                    if (peerId != null) {
+                        val isOnline   = event.onlineUserIds.contains(peerId)
+                        val isSleeping = event.sleepingUserIds.contains(peerId)
+                        _state.update { it.copy(
+                            peerOnline   = isOnline,
+                            peerSleeping = isSleeping,
+                        )}
                     }
                 }
                 else -> {}

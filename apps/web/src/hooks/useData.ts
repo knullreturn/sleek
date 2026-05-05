@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { useChatStore } from '../store/chat.store';
-import { getSocket } from './useSocket';
+import { safeEmit, getSocket } from './useSocket';
 
 export function useChats() {
   // Use selector to get only what we need — avoids subscribing to entire store
@@ -45,10 +45,20 @@ export function useMessages(chatId: string | null) {
   }, [query.data, chatId, mergeMessages]);
 
   const sendMessage = useCallback(
-    (content: string, replyToId?: string) => {
-      if (!chatId || !content.trim()) return;
-      const socket = getSocket();
-      socket?.emit('send_message', { chatId, content: content.trim(), replyToId });
+    (content: string, replyToId?: string): boolean => {
+      if (!chatId || !content.trim()) return false;
+      // Fix: safeEmit returns false immediately if socket is disconnected.
+      // The caller (ChatWindow) can show a failed-to-send indicator.
+      return safeEmit(
+        'send_message',
+        { chatId, content: content.trim(), replyToId },
+        (ack: any) => {
+          if (!ack?.ok) {
+            console.error('send_message failed:', ack?.error);
+            // TODO: surface error toast when toast system is added
+          }
+        }
+      );
     },
     [chatId]
   );

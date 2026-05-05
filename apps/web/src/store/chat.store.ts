@@ -36,6 +36,7 @@ interface ChatState {
   activeChatId: string | null;
   typing: TypingState;
   onlineUsers: Set<string>;
+  sleepingUsers: Set<string>;   // users with sleep/DND mode enabled
   seenUpTo: Record<string, string | null>;
   unreadCounts: Record<string, number>;
 
@@ -48,7 +49,7 @@ interface ChatState {
   addMessage:      (message: Message) => void;
   updateMessage:   (chatId: string, patch: Partial<Message> & { id: string }) => void;
   setTyping:       (chatId: string, userId: string, username: string, isTyping: boolean) => void;
-  setUserOnline:   (userId: string, online: boolean) => void;
+  setUserOnline:   (userId: string, online: boolean, sleeping?: boolean) => void;
   setSeenUpTo:     (chatId: string, messageId: string | null) => void;
   incrementUnread: (chatId: string) => void;
   clearUnread:     (chatId: string) => void;
@@ -61,6 +62,7 @@ export const useChatStore = create<ChatState>((set) => ({
   activeChatId: null,
   typing: {},
   onlineUsers: new Set(),
+  sleepingUsers: new Set(),
   seenUpTo: {},
   unreadCounts: {},
 
@@ -159,11 +161,18 @@ export const useChatStore = create<ChatState>((set) => ({
       }
     }),
 
-  setUserOnline: (userId, online) =>
+  setUserOnline: (userId, online, sleeping = false) =>
     set((state) => {
-      const next = new Set(state.onlineUsers);
-      if (online) next.add(userId); else next.delete(userId);
-      return { onlineUsers: next };
+      const nextOnline   = new Set(state.onlineUsers);
+      const nextSleeping = new Set(state.sleepingUsers);
+      if (online) {
+        nextOnline.add(userId);
+        if (sleeping) nextSleeping.add(userId); else nextSleeping.delete(userId);
+      } else {
+        nextOnline.delete(userId);
+        nextSleeping.delete(userId);
+      }
+      return { onlineUsers: nextOnline, sleepingUsers: nextSleeping };
     }),
 
   setSeenUpTo: (chatId, messageId) =>

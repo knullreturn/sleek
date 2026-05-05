@@ -212,8 +212,9 @@ fun ChatScreen(
                         }
                         Column {
                             Text(text = peer?.username ?: chatName, style = MaterialTheme.typography.titleMedium)
-                            if (sleepMode) {
-                                Surface(
+                            when {
+                                // MY sleep mode badge — I turned it on, show it to me
+                                sleepMode -> Surface(
                                     shape    = RoundedCornerShape(4.dp),
                                     color    = Accent.copy(alpha = 0.15f),
                                     modifier = Modifier.padding(top = 2.dp),
@@ -228,6 +229,25 @@ fun ChatScreen(
                                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                                     )
                                 }
+                                // PEER's sleep mode — they turned it on, show it to me
+                                state.peerSleeping -> Text(
+                                    text  = "💤 Do Not Disturb",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color         = Accent,
+                                        fontSize      = 9.sp,
+                                        letterSpacing = 0.5.sp,
+                                    ),
+                                )
+                                // Peer is online (not sleeping)
+                                state.peerOnline -> Text(
+                                    text  = "● Online",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color     = androidx.compose.ui.graphics.Color(0xFF4CAF50),
+                                        fontSize  = 9.sp,
+                                    ),
+                                )
+                                // Peer is offline
+                                else -> {} // no subtitle when offline — less noise
                             }
                         }
                     }

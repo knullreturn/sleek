@@ -14,21 +14,28 @@ export function registerMessageHandlers(
   prisma: PrismaClient,
 ) {
   // ── send_message ────────────────────────────────────────────────────────────
-  socket.on('send_message', async (payload: { chatId: string; content: string; replyToId?: string }) => {
+  socket.on('send_message', async (
+    payload: { chatId: string; content: string; replyToId?: string },
+    ack?: (res: { ok: boolean; error?: string }) => void,
+  ) => {
     try {
       const { chatId, content, replyToId } = payload;
       const trimmed = content?.trim();
-      if (!trimmed)              return;
-      if (trimmed.length > 4000) return socket.emit('error', { message: 'Message too long (max 4000 characters)' });
+      const fail = (error: string) => {
+        socket.emit('error', { message: error });
+        ack?.({ ok: false, error });
+      };
+      if (!trimmed)              return fail('Empty message');
+      if (trimmed.length > 4000) return fail('Message too long (max 4000 characters)');
 
       const member = await prisma.chatMember.findUnique({
         where: { chatId_userId: { chatId, userId: socket.userId } },
       });
-      if (!member) return socket.emit('error', { message: 'Not a member of this chat' });
+      if (!member) return fail('Not a member of this chat');
 
       if (replyToId) {
         const replyMsg = await prisma.message.findUnique({ where: { id: replyToId }, select: { chatId: true } });
-        if (!replyMsg || replyMsg.chatId !== chatId) return socket.emit('error', { message: 'Invalid reply target' });
+        if (!replyMsg || replyMsg.chatId !== chatId) return fail('Invalid reply target');
       }
 
       const message = await prisma.message.create({
@@ -70,8 +77,10 @@ export function registerMessageHandlers(
 
       io.to(`chat:${chatId}`).emit('receive_message', { message: serializeMessage(message) });
 
+      // ACK success — client knows the message reached the server
+      ack?.({ ok: true });
+
       // ── FCM push for offline members ───────────────────────────────────────
-      // Find members who have no active sockets (app is killed) and have an FCM token
       const senderName = message.sender?.username ?? 'Someone';
       const chatMembers = await prisma.chatMember.findMany({
         where:   { chatId },
@@ -79,9 +88,9 @@ export function registerMessageHandlers(
       });
       const offlineTokens: string[] = [];
       for (const cm of chatMembers) {
-        if (cm.user.id === socket.userId) continue;                // skip sender
+        if (cm.user.id === socket.userId) continue;
         const activeSockets = await io.in(`user:${cm.user.id}`).fetchSockets();
-        if (activeSockets.length === 0 && cm.user.fcmToken) {     // truly offline
+        if (activeSockets.length === 0 && cm.user.fcmToken) {
           offlineTokens.push(cm.user.fcmToken);
         }
       }
@@ -97,6 +106,7 @@ export function registerMessageHandlers(
     } catch (err) {
       console.error('send_message error:', err);
       socket.emit('error', { message: 'Failed to send message' });
+      ack?.({ ok: false, error: 'Server error' });
     }
   });
 

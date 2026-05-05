@@ -98,7 +98,12 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun setSleepMode(enabled: Boolean) {
-        viewModelScope.launch { settingsStore.setSleepModeEnabled(enabled) }
+        viewModelScope.launch {
+            settingsStore.setSleepModeEnabled(enabled)
+            // Notify server immediately — it broadcasts to all peers so they
+            // see the sleeping/online status change without any delay or polling.
+            socketManager.setSleepMode(enabled)
+        }
     }
 
     fun logout() {
